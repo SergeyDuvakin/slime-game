@@ -1,0 +1,321 @@
+{
+ "image": "slug41_atlas.png",
+ "size": [
+  1024,
+  320
+ ],
+ "character": "slug41",
+ "facing": "right",
+ "notes": "pivot: pixels from frame top-left. pivot_norm: Unity style (0..1, origin bottom-left). splat/recover are drawn against a surface at the BOTTOM of the cell (local y=+16 from pivot).",
+ "animations": {
+  "idle": {
+   "frames": [
+    {
+     "x": 0,
+     "y": 0,
+     "w": 64,
+     "h": 64,
+     "duration_ms": 110
+    },
+    {
+     "x": 64,
+     "y": 0,
+     "w": 64,
+     "h": 64,
+     "duration_ms": 110
+    },
+    {
+     "x": 128,
+     "y": 0,
+     "w": 64,
+     "h": 64,
+     "duration_ms": 110
+    },
+    {
+     "x": 192,
+     "y": 0,
+     "w": 64,
+     "h": 64,
+     "duration_ms": 110
+    },
+    {
+     "x": 256,
+     "y": 0,
+     "w": 64,
+     "h": 64,
+     "duration_ms": 110
+    },
+    {
+     "x": 320,
+     "y": 0,
+     "w": 64,
+     "h": 64,
+     "duration_ms": 110
+    }
+   ],
+   "pivot": [
+    32,
+    40
+   ],
+   "pivot_norm": [
+    0.5,
+    0.375
+   ],
+   "loop": true,
+   "strip": "strips/slug41_idle.png"
+  },
+  "pull": {
+   "frames": [
+    {
+     "x": 0,
+     "y": 64,
+     "w": 128,
+     "h": 64,
+     "duration_ms": 60
+    },
+    {
+     "x": 128,
+     "y": 64,
+     "w": 128,
+     "h": 64,
+     "duration_ms": 60
+    },
+    {
+     "x": 256,
+     "y": 64,
+     "w": 128,
+     "h": 64,
+     "duration_ms": 60
+    },
+    {
+     "x": 384,
+     "y": 64,
+     "w": 128,
+     "h": 64,
+     "duration_ms": 60
+    },
+    {
+     "x": 512,
+     "y": 64,
+     "w": 128,
+     "h": 64,
+     "duration_ms": 60
+    },
+    {
+     "x": 640,
+     "y": 64,
+     "w": 128,
+     "h": 64,
+     "duration_ms": 60
+    },
+    {
+     "x": 768,
+     "y": 64,
+     "w": 128,
+     "h": 64,
+     "duration_ms": 60
+    },
+    {
+     "x": 896,
+     "y": 64,
+     "w": 128,
+     "h": 64,
+     "duration_ms": 60
+    }
+   ],
+   "pivot": [
+    96,
+    40
+   ],
+   "pivot_norm": [
+    0.75,
+    0.375
+   ],
+   "loop": false,
+   "strip": "strips/slug41_pull.png",
+   "select_by": "pull strength s in 0..1 -> frame index round(s*7)"
+  },
+  "fly": {
+   "frames": [
+    {
+     "x": 0,
+     "y": 128,
+     "w": 64,
+     "h": 64,
+     "duration_ms": 60
+    },
+    {
+     "x": 64,
+     "y": 128,
+     "w": 64,
+     "h": 64,
+     "duration_ms": 60
+    },
+    {
+     "x": 128,
+     "y": 128,
+     "w": 64,
+     "h": 64,
+     "duration_ms": 60
+    },
+    {
+     "x": 192,
+     "y": 128,
+     "w": 64,
+     "h": 64,
+     "duration_ms": 60
+    },
+    {
+     "x": 256,
+     "y": 128,
+     "w": 64,
+     "h": 64,
+     "duration_ms": 60
+    },
+    {
+     "x": 320,
+     "y": 128,
+     "w": 64,
+     "h": 64,
+     "duration_ms": 60
+    }
+   ],
+   "pivot": [
+    32,
+    40
+   ],
+   "pivot_norm": [
+    0.5,
+    0.375
+   ],
+   "loop": true,
+   "strip": "strips/slug41_fly.png"
+  },
+  "splat": {
+   "frames": [
+    {
+     "x": 0,
+     "y": 192,
+     "w": 64,
+     "h": 64,
+     "duration_ms": 50
+    },
+    {
+     "x": 64,
+     "y": 192,
+     "w": 64,
+     "h": 64,
+     "duration_ms": 60
+    },
+    {
+     "x": 128,
+     "y": 192,
+     "w": 64,
+     "h": 64,
+     "duration_ms": 70
+    },
+    {
+     "x": 192,
+     "y": 192,
+     "w": 64,
+     "h": 64,
+     "duration_ms": 110
+    },
+    {
+     "x": 256,
+     "y": 192,
+     "w": 64,
+     "h": 64,
+     "duration_ms": 110
+    },
+    {
+     "x": 320,
+     "y": 192,
+     "w": 64,
+     "h": 64,
+     "duration_ms": 110
+    }
+   ],
+   "pivot": [
+    32,
+    40
+   ],
+   "pivot_norm": [
+    0.5,
+    0.375
+   ],
+   "loop": false,
+   "strip": "strips/slug41_splat.png"
+  },
+  "recover": {
+   "frames": [
+    {
+     "x": 0,
+     "y": 256,
+     "w": 64,
+     "h": 64,
+     "duration_ms": 90
+    },
+    {
+     "x": 64,
+     "y": 256,
+     "w": 64,
+     "h": 64,
+     "duration_ms": 80
+    },
+    {
+     "x": 128,
+     "y": 256,
+     "w": 64,
+     "h": 64,
+     "duration_ms": 90
+    },
+    {
+     "x": 192,
+     "y": 256,
+     "w": 64,
+     "h": 64,
+     "duration_ms": 80
+    },
+    {
+     "x": 256,
+     "y": 256,
+     "w": 64,
+     "h": 64,
+     "duration_ms": 80
+    },
+    {
+     "x": 320,
+     "y": 256,
+     "w": 64,
+     "h": 64,
+     "duration_ms": 90
+    },
+    {
+     "x": 384,
+     "y": 256,
+     "w": 64,
+     "h": 64,
+     "duration_ms": 100
+    },
+    {
+     "x": 448,
+     "y": 256,
+     "w": 64,
+     "h": 64,
+     "duration_ms": 120
+    }
+   ],
+   "pivot": [
+    32,
+    40
+   ],
+   "pivot_norm": [
+    0.5,
+    0.375
+   ],
+   "loop": false,
+   "strip": "strips/slug41_recover.png"
+  }
+ }
+}
