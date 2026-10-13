@@ -118,8 +118,12 @@ function setMute(m){ save.mute=m; store(); if(master) master.gain.value=m?0:.5; 
 
 // ---------- canvas ----------
 const cv=document.getElementById('c'), ctx=cv.getContext('2d');
-let W=320,H=624,SC=1,DPR=1, ox=0, oy=0;
-function resize(){ DPR=window.devicePixelRatio||1; const vw=window.innerWidth, vh=(inTG&&tg.viewportStableHeight)||window.innerHeight;
+let W=320,H=624,SC=1,DPR=1, ox=0, oy=0, fitW=0, fitH=0;
+function tgViewH(){ let h=window.innerHeight||0;
+ if(inTG){ const cur=Number(tg.viewportHeight)||0, stable=Number(tg.viewportStableHeight)||0; if(cur>h)h=cur; if(stable>h)h=stable; }
+ return h||window.innerHeight; }
+function resize(){ DPR=window.devicePixelRatio||1; const vw=window.innerWidth, vh=tgViewH();
+ if(vw===fitW && vh===fitH) return false; fitW=vw; fitH=vh;
  const dw=Math.round(vw*DPR), dh=Math.round(vh*DPR);
  SC=Math.max(1,Math.floor(Math.min(dw/LW,dh/(LH+36))));
  W=Math.floor(dw/SC); H=Math.floor(dh/SC); cv.width=W; cv.height=H;
@@ -127,8 +131,7 @@ function resize(){ DPR=window.devicePixelRatio||1; const vw=window.innerWidth, v
  cv.style.left=Math.floor((vw-W*SC/DPR)/2)+'px'; cv.style.top='0px';
  ctx.imageSmoothingEnabled=false;
  ox=Math.floor((W-LW)/2); oy=Math.max(30,Math.floor((H-LH)/2)+14); if(oy+LH>H) oy=H-LH;
- bgCache={}; }
-window.addEventListener('resize',resize);
+ bgCache={}; return true; }
 const mk=(w,h)=>{const c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d');x.imageSmoothingEnabled=false;return [c,x];};
 const hex=h=>{ if(h.length===4) h='#'+h[1]+h[1]+h[2]+h[2]+h[3]+h[3]; return [parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16)];};
 const BAYER=[0,8,2,10,12,4,14,6,3,11,1,9,15,7,13,5];
@@ -809,9 +812,12 @@ let coverMode=false;
 let last=performance.now();
 function loop(t){ if(coverMode) return; let dt=Math.min(.05,(t-last)/1000); last=t; update(dt); render(); requestAnimationFrame(loop); }
 function initMenuSlugs(){ const pool=CHARS.filter((c,i)=>unlocked(i)); const pick=pool.length<=5?pool:[...pool.slice(0,3),...pool.slice(-2)]; menuSlugs=pick.map((c,i)=>({id:c.id,x:W*(i+1)/6,y:H-60+3,gy:H-60+3,vy:0,vx:0,o:i*.37,flip:i%2===1})); }
+function refit(){ if(resize()&&scene==='menu') initMenuSlugs(); }
 tgInit(); resize();
+if(inTG){ try{ tg.onEvent('viewportChanged', refit); }catch(e){}
+ [50,300,800].forEach(ms=>setTimeout(refit,ms)); }
 loadSprites().then(()=>{ if(!unlocked(selPick)) selPick=0; initMenuSlugs(); requestAnimationFrame(loop); });
-window.addEventListener('resize',()=>initMenuSlugs());
+window.addEventListener('resize',refit);
 // хуки для тестов
 window.__game={set fixDt(v){FIXDT=v},set selPage(v){selPage=v}, set lvlPage(v){lvlPage=v;lvlPageInit=true}, get lvlPage(){return lvlPage}, migrateSave, levelStars, isOpen, pc:()=>drawPlay.pc, unlocked, totalStars, save, get scene(){return scene}, set scene(v){scene=v}, startLevel, get world(){return world}, World, LV, CHARS, setChar:i=>{selPick=i}, get overlay(){return overlay}, toLevel:(x,y)=>[x*W/ (cv.getBoundingClientRect().width)]};
 })();
