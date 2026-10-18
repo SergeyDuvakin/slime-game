@@ -1,5 +1,5 @@
 'use strict';
-window.__ASSET_V='4.1.0';
+window.__ASSET_V='4.1.1';
 /* FB14: долгое нажатие — без выделения текста, лупы и контекстного меню (Telegram WebView / iOS / Android); поля ввода не трогаем */
 (()=>{ const editable=t=>!!(t&&t.closest&&t.closest('input,textarea,select,[contenteditable]')); const stop=e=>{ if(!editable(e.target)) e.preventDefault(); };
  ['contextmenu','selectstart','dragstart','gesturestart'].forEach(k=>document.addEventListener(k,stop,{passive:false,capture:true}));
@@ -277,9 +277,10 @@ function drawBG(ti,camx,t){ const L=bgCache[ti]||(bgCache[ti]=genBG(ti));
 let bpSolids=[];
 function spikeTeeth(x,X,Y,w,down){ const n=Math.max(1,Math.round(w/8)), pw=w/n; for(let i=0;i<n;i++){ const x0=Math.round(X+i*pw), x1=Math.round(X+(i+1)*pw), tw=x1-x0, mid=(tw-1)/2;
   for(let k=0;k<tw;k++){ const hh=Math.max(1,Math.round(8-Math.abs(k-mid)*(14/Math.max(4,tw)))); const yy=down?Y:Y+8-hh; x.fillStyle='#1a1020'; x.fillRect(x0+k,down?Y+hh:yy-1,1,1); x.fillStyle=k<mid?'#eef2fa':k-mid<1?'#c8d0e0':'#8a96b0'; x.fillRect(x0+k,yy,1,hh); if(hh>=7){ x.fillStyle='#ff4a6a'; x.fillRect(x0+k,down?Y+hh-2:yy,1,2); } } } }
-function spikeTeethOld(x,X,Y,w){ for(let sx=X;sx<X+w;sx+=8){ for(let k=0;k<8;k++){ const hh=Math.max(0,8-Math.abs(k-3.5)*2.2)|0; x.fillStyle=k<4?'#e8eef8':'#9aa6c0'; x.fillRect(sx+k,Y+8-hh,1,hh); x.fillStyle='#ff4a6a'; if(hh>=7) x.fillRect(sx+k,Y,1,2);} x.fillStyle='#1a1020'; x.fillRect(sx,Y+7,8,1); } }
-function spikePaint(x,X,Y,w,h,th){ x.fillStyle='#3a2a44'; x.fillRect(X,Y+6,w,h-6); x.fillStyle='#24182c'; x.fillRect(X,Y+h-3,w,3);
- if(h>14&&th){ /* столб под шипами: ровный, в цветах темы уровня, как стены */ const by=Y+7, bh=h-7; x.fillStyle=th.out; x.fillRect(X,by,w,bh); if(w>2){ x.fillStyle=th.body; x.fillRect(X+1,by,w-2,bh-1); x.fillStyle=th.bodyHi; x.fillRect(X+1,by,1,bh-1); x.fillStyle=th.body2; x.fillRect(X+w-2,by,1,bh-1); x.fillRect(X+1,by+bh-2,w-2,1); } }
+function spikeTeethOld(x,X,Y,w){ const n=Math.max(1,Math.ceil(w/8-.01)), X0=Math.round(X+(w-n*8)/2); /* зубцы ровно по центру ширины */ for(let i=0;i<n;i++){ const sx=X0+i*8; for(let k=0;k<8;k++){ const hh=Math.max(0,8-Math.abs(k-3.5)*2.2)|0; x.fillStyle=k<4?'#e8eef8':'#9aa6c0'; x.fillRect(sx+k,Y+8-hh,1,hh); x.fillStyle='#ff4a6a'; if(hh>=7) x.fillRect(sx+k,Y,1,2);} x.fillStyle='#1a1020'; x.fillRect(sx,Y+7,8,1); } }
+function spikePaint(x,X,Y,w,h,th){
+ if(h>14&&th){ /* столб под шипами: ровный, в цветах темы уровня, без подчёркиваний снизу */ const by=Y+7, bh=h-7; x.fillStyle=th.out; x.fillRect(X,by,w,bh); if(w>2){ x.fillStyle=th.body; x.fillRect(X+1,by,w-2,bh); x.fillStyle=th.bodyHi; x.fillRect(X+1,by,1,bh); x.fillStyle=th.body2; x.fillRect(X+w-2,by,1,bh); } }
+ else { x.fillStyle='#3a2a44'; x.fillRect(X,Y+6,w,h-6); x.fillStyle='#24182c'; x.fillRect(X,Y+h-3,w,3); }
  spikeTeethOld(x,X,Y,w); }
 function blockPaint(x,r,th,type,sd){ const [X,Y,w,h]=r; seed=sd;
  if(type==='s'){ spikePaint(x,X,Y,w,h,th); return; }
