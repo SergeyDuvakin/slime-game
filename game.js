@@ -1,5 +1,5 @@
 'use strict';
-window.__ASSET_V='4.1.3';
+window.__ASSET_V='4.2.0';
 /* FB14: долгое нажатие — без выделения текста, лупы и контекстного меню (Telegram WebView / iOS / Android); поля ввода не трогаем */
 (()=>{ const editable=t=>!!(t&&t.closest&&t.closest('input,textarea,select,[contenteditable]')); const stop=e=>{ if(!editable(e.target)) e.preventDefault(); };
  ['contextmenu','selectstart','dragstart','gesturestart'].forEach(k=>document.addEventListener(k,stop,{passive:false,capture:true}));
@@ -8,7 +8,7 @@ window.__ASSET_V='4.1.3';
  document.addEventListener('selectionchange',()=>{ const sl=window.getSelection&&window.getSelection(); if(sl&&sl.rangeCount&&!editable(document.activeElement)) sl.removeAllRanges(); }); })();
 /* ШМЯКОДРОМ — пиксельная мини-игра про слизней-рогаток. Vanilla JS + Canvas. */
 (()=>{
-const K=4/3, LW=320, LH=588, R=13, MAXDRAG=104, G0=620*K;
+const K=4/3; let LW=320, LH=588; const R=13, MAXDRAG=104, G0=620*K;
 const SPLAT_V=470*K;
 const CHARS=[
  {id:'slug01',name:'Желейка',perk:'Супер-прыгучая',desc:'Отскакивает как мячик',col:'#a57af0',rest:.72,fric:.6,power:1,grav:1,splat:1.25},
@@ -154,15 +154,25 @@ let W=320,H=624,SC=1,DPR=1, ox=0, oy=0;
 let lastWH=null;
 // высота: максимум из innerHeight и обеих высот Telegram (нули/undefined игнорируем) — никогда только viewportStableHeight
 function viewH(){ const c=[window.innerHeight]; if(tg){ c.push(tg.viewportHeight, tg.viewportStableHeight); } return Math.max(...c.filter(v=>v&&isFinite(v)&&v>0)); }
+/* Ф0п: поле 390×760 без камеры; старые уровни 320×588 центрированы (+35,+172); масштаб по физ. пикселям + фолбэк (ТЗ 26.10.3) */
+const FIELD_V2=true, FW=FIELD_V2?390:LW, FH=FIELD_V2?760:LH, HUD_TOP=44, HUD_BOT=8, S_KEEP=.9;
+let fx=0, fy=0, SCS=1, FOX=FIELD_V2?35:0, FOY=FIELD_V2?172:0;
+/* Ф0п П3: формат уровня — fw/fh (390×760 для перенесённых), без них — старое поле 320×588, центрированное (+35,+172) */
+function setField(L){ const v2=FIELD_V2&&L&&L.fw===FW&&L.fh===FH; const nw=v2?FW:320, nh=v2?FH:588; if(nw!==LW||nh!==LH){ LW=nw; LH=nh; nightC=null; } FOX=FIELD_V2?(FW-LW)>>1:0; FOY=FIELD_V2?FH-LH:0; if(FIELD_V2){ ox=fx+FOX; oy=fy+FOY; } }
 function resize(){ const d0=window.devicePixelRatio||1, vw=window.innerWidth, vh=viewH(); const key=vw+'x'+vh+'@'+d0; if(key===lastWH) return false; lastWH=key; DPR=d0;
  const dw=Math.round(vw*DPR), dh=Math.round(vh*DPR);
- SC=Math.max(1,Math.floor(Math.min(dw/LW,dh/(LH+36))));
+ if(FIELD_V2){ const s0=Math.min(vw/FW,(vh-HUD_TOP-HUD_BOT)/FH); let p=Math.floor(Math.min(s0,1)*DPR+1e-6), s=p/DPR;
+  if(!(p>=1&&(s>=1||s>=S_KEEP*Math.min(s0,1)))) s=Math.max(.3,Math.floor(Math.min(s0,1)*100)/100); SCS=s; SC=s*DPR; }
+ else SC=Math.max(1,Math.floor(Math.min(dw/LW,dh/(LH+36))));
  W=Math.floor(dw/SC); H=Math.floor(dh/SC); cv.width=W; cv.height=H;
- cv.style.width=(W*SC/DPR)+'px'; cv.style.height=(H*SC/DPR)+'px';
- cv.style.left=Math.floor((vw-W*SC/DPR)/2)+'px'; cv.style.top='0px';
- if(tcv){ tcv.width=W*SC; tcv.height=H*SC; tcv.style.width=cv.style.width; tcv.style.height=cv.style.height; tcv.style.left=cv.style.left; tcv.style.top='0px'; }
+ const cw=Math.round(W*SC)/DPR, ch=Math.round(H*SC)/DPR;
+ cv.style.width=cw+'px'; cv.style.height=ch+'px';
+ cv.style.left=Math.floor((vw-cw)/2)+'px'; cv.style.top='0px';
+ if(tcv){ tcv.width=Math.round(W*SC); tcv.height=Math.round(H*SC); tcv.style.width=cv.style.width; tcv.style.height=cv.style.height; tcv.style.left=cv.style.left; tcv.style.top='0px'; }
  ctx.imageSmoothingEnabled=false;
- ox=Math.floor((W-LW)/2); oy=Math.max(30,Math.floor((H-LH)/2)+14); if(oy+LH>H) oy=H-LH;
+ if(FIELD_V2){ fx=Math.floor((W-FW)/2); fy=Math.max(0,H-FH-Math.ceil(HUD_BOT*DPR/SC)); ox=fx+FOX; oy=fy+FOY; }
+ else { ox=Math.floor((W-LW)/2); oy=Math.max(30,Math.floor((H-LH)/2)+14); if(oy+LH>H) oy=H-LH; fx=ox; fy=oy; }
+ TMIN=Math.max(11,Math.ceil(9*DPR/SC));
  bgCache={}; return true; }
 const mk=(w,h)=>{const c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d');x.imageSmoothingEnabled=false;return [c,x];};
 const hex=h=>{ if(h.length===4) h='#'+h[1]+h[1]+h[2]+h[2]+h[3]+h[3]; return [parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16)];};
@@ -190,7 +200,7 @@ function txt(s,size=10,col='#fff',out='#1a0c22',shadow=true){
   if(isOn(sx,sy)){ const k=Math.min(cols.length-1,Math.floor((sy-y0)/(y1-y0+1)*cols.length)); put(x,y,cols[k]); }
   else if(isOn(sx-1,sy)||isOn(sx+1,sy)||isOn(sx,sy-1)||isOn(sx,sy+1)||(shadow&&(isOn(sx,sy-2)||isOn(sx-1,sy-2)))) put(x,y,oc); }
  oxx.putImageData(img,0,0); txtCache.set(key,o); return o; }
-const TMIN=11; const tMeasure=new Map();
+let TMIN=11; const tMeasure=new Map();
 function textClear(){ if(tctx) tctx.clearRect(0,0,tcv.width,tcv.height); }
 /* FB16: обрезка текста по ширине (логич. px) */
 function textW(s,size){ const px=Math.round(Math.max(TMIN,size)*SC); tctx.font=`900 ${px}px "Trebuchet MS","Verdana","DejaVu Sans","Arial Black",Arial,sans-serif`; return tctx.measureText(s).width/SC+2; }
@@ -334,7 +344,7 @@ const BOSS=[
 // FB10: тап-способности гибрида — список по порядку родителей (1-й тап = A, 2-й тап = B); слоу-мо — удержание пальца, работает всегда вместе с ними
 function tapList(ch){ if(Array.isArray(ch.taps)) return ch.taps; return ch.tap&&ch.ab&&ch.ab!=='slowmo'?[ch.ab]:[]; }
 class World{
- constructor(li,ci,L){ this.li=li; this.L=L||LV[li]; this.ch=(ci&&typeof ci==='object')?ci:CHARS[ci]; this.ab=this.ch.ab||''; this.abs=new Set(this.ch.abs||(this.ch.ab?[this.ch.ab]:[])); this.taps=tapList(this.ch); this.mod=null; this.t=0; L=this.L;
+ constructor(li,ci,L){ this.li=li; this.L=L||LV[li]; setField(this.L); this.ch=(ci&&typeof ci==='object')?ci:CHARS[ci]; this.ab=this.ch.ab||''; this.abs=new Set(this.ch.abs||(this.ch.ab?[this.ch.ab]:[])); this.taps=tapList(this.ch); this.mod=null; this.t=0; L=this.L;
   this.solids=L.p.map(r=>({x:r[0],y:r[1],w:r[2],h:r[3],type:r[4],arg:r[5],alive:true,hit:0}));
   this.movers=(L.m||[]).map(m=>({...m,bx:m.x,by:m.y,type:m.s?'s':'g',vx:0,vy:0,mover:true,alive:true}));
   this.bumpers=(L.bu||[]).map(b=>({x:b[0],y:b[1],r:b[2],hit:0}));
@@ -1002,7 +1012,7 @@ function drawPlay(){ const s=world.s, ti=themeOf(curLevel), th=THEMES[ti], ch=PC
  ctx.restore();
  if(flash>0){ ctx.fillStyle='rgba(255,255,255,.35)'; ctx.fillRect(0,0,W,H); }
  // HUD
- const tp=TAP(), roomy=oy>=tp+8, hy=roomy?oy-tp-6:2; if(!roomy) ctx.globalAlpha=.8;
+ const tp=TAP(), roomy=fy>=tp+8, hy=roomy?Math.max(4,Math.min(fy-tp-6,Math.ceil(6*DPR/SC))):2; if(!roomy) ctx.globalAlpha=.8;
  iconBtn(4,hy,icBack,()=>goBack(),'back'); iconBtn(8+tp,hy,icRetry,()=>{sfx('tap');startLevel(curLevel);},'retry');
  iconBtn(W-4-tp,hy,icMute,()=>{setMute(!save.mute);},'mute'); iconBtn(W-8-2*tp,hy,icPause,()=>{sfx('tap');openPause();},'pause'); ctx.globalAlpha=1;
  const midW=W-4*tp-28; const nm=(curLevel+1)+'. '+world.L.name; T(nm.length*7>midW?nm.slice(0,Math.max(4,midW/7|0))+'…':nm,W/2,hy+1,12,'#fff');
@@ -1181,7 +1191,7 @@ drawPlay.hud=(hy,tp)=>{ if(!chaosRun) return; const c=chaosRun; const y=oy+LH+4>
 drawMenu.extra=(my,tp)=>{ const ok=totalStars()>=CHAOS_STARS; btn(W/2-75,my,150,tp,ok?'ХАОС':'ХАОС ★'+CHAOS_STARS,()=>{ if(!ok){ sfx('bounce',40); haptic('error'); floats.push({s:'Хаос откроется на ★'+CHAOS_STARS,x:W/2-ox,y:my-oy-8,t:0,life:1.4,size:11,col:'#ffd23c'}); return; } sfx('win'); chaosStart(); },ok?'#c03ad0':'#4a3a5a',16); buttons[buttons.length-1].label='chaos';
  if(save.chaos&&save.chaos.best) T('рекорд хаоса: '+save.chaos.best,W/2,my+tp+4,10,'#ffb0ff'); return my+tp+(save.chaos&&save.chaos.best?26:12); };
 
-function drawPause(tp){ const pw=Math.min(W-20,260), ph=tp*3+90+(drawPause.h?drawPause.h(tp):0), px=(W-pw)/2|0, py=Math.floor(H/2-ph/2); panel(px,py,pw,ph,'#2b1a4a'); T('ПАУЗА',W/2,py+10,20,['#fff','#ffd23c']);
+function drawPause(tp){ const pw=Math.min(W-20,Math.max(260,Math.ceil(260*TMIN/11))), ph=tp*3+90+(drawPause.h?drawPause.h(tp):0), px=(W-pw)/2|0, py=Math.floor(H/2-ph/2); panel(px,py,pw,ph,'#2b1a4a'); T('ПАУЗА',W/2,py+10,20,['#fff','#ffd23c']);
  btn(px+12,py+44,pw-24,tp,'ПРОДОЛЖИТЬ',()=>{sfx('tap');overlay=null;},'#4ed05a',16); const bw=(pw-36)/2|0;
  btn(px+12,py+54+tp,bw,tp,'ЗАНОВО',()=>{sfx('tap');startLevel(curLevel);},'#6a4fd8',15); btn(px+pw-12-bw,py+54+tp,bw,tp,chaosRun?'ВЫЙТИ':'УРОВНИ',()=>{sfx('tap'); if(chaosRun){ chaosEnd(); return; } overlay=null;scene='levels';},'#6a4fd8',15); if(drawPause.extra) drawPause.extra(px,py+64+2*tp,pw,tp); }
 let grafConfirm=0;
@@ -1322,7 +1332,7 @@ function drawWeather(){ if(!world.wx) return; const w=world.wxNow, a=wxFade;
 function drawWxChip(y){ if(!world.wx) return y; const S=world.L.wx, w=world.wx; const [nm,col]=WXN[world.wxNow]||['?','#fff']; const left=S.length>1?S[w.i][1]-w.t:0;
  ctx.fillStyle='rgba(12,4,24,.55)'; ctx.fillRect(LW-112,y,108,24); T(nm,LW-58,y+2,11,col); if(S.length>1){ ctx.fillStyle='#1a0c22'; ctx.fillRect(LW-108,y+18,100,4); ctx.fillStyle=left<2?((now*8|0)%2?'#ff3a3a':'#ffd23c'):col; ctx.fillRect(LW-107,y+19,Math.round(98*Math.max(0,left/S[w.i][1])),2); } return y+28; }
 // ---------- 16: ночь ----------
-let nightC=null, nightX=null;
+var nightC=null, nightX=null;
 function drawNight(){ if(!isNight()) return; if(!nightC){ [nightC,nightX]=mk(LW,LH); } const x=nightX; x.globalCompositeOperation='source-over'; x.clearRect(0,0,LW,LH); x.fillStyle='rgba(6,6,30,.74)'; x.fillRect(0,0,LW,LH);
  x.globalCompositeOperation='destination-out'; const hole=(cx,cy,r,k=1)=>{ for(const [f,al] of [[1,.35],[.78,.35],[.56,.5]]){ x.globalAlpha=al*k; x.beginPath(); x.arc(Math.round(cx),Math.round(cy),Math.round(r*f),0,7); x.fill(); } x.globalAlpha=1; };
  const s=world.s, fl=1+Math.sin(now*9)*.03+Math.sin(now*23)*.02; if(s.st!=='poof') hole(s.x,s.y-6,72*fl); if(world.buttons) for(const b of world.buttons) if(!b.on) hole(b.x,btnY(b)+1,14,.9); /* FB23: только НЕнажатая кнопка видна сквозь ночь */ if(world.clone) hole(world.clone.x,world.clone.y,40*fl);
@@ -1356,7 +1366,8 @@ function bossLblObst(){ const R=[], w=world; const hb=(w.wx||relay)?62:30; R.pus
 function bossLblPlace(b,w,h){ const R=bossLblObst(), ov=(x,y)=>{ let a=0; for(const r of R){ const ix=Math.min(x+w,r[0]+r[2])-Math.max(x,r[0]), iy=Math.min(y+h,r[1]+r[3])-Math.max(y,r[1]); if(ix>0&&iy>0) a+=ix*iy; } return a; };
  const C=[], bx=b.x, by=b.y, r=b.r; for(const [mode,yy] of [['a',by-r-h-13],['b',by+r+10],['a2',by-r-h-40],['b2',by+r+36]]) for(const dx of [0,-60,60,-110,110]){ const cx=Math.round(Math.max(w/2+3,Math.min(LW-w/2-3,bx+dx))), y0=Math.round(Math.max(4,Math.min(LH-h-6,yy))); const sc=ov(cx-w/2,y0)*10+Math.abs(dx)*2+(mode[0]==='b'?30:0)+(mode.length>1?60:0)+(Math.abs(y0-yy)>2?400:0); C.push({mode,dx,cx,y0,sc,above:mode[0]==='a'&&y0+h+4<=by-r}); }
  for(let yy=34;yy<=LH-h-6;yy+=12) for(const dx of [0,-80,80]){ const cx=Math.round(Math.max(w/2+3,Math.min(LW-w/2-3,bx+dx))); const o=ov(cx-w/2,yy); C.push({mode:'g'+yy,dx,cx,y0:yy,sc:o*10+150+Math.abs(yy-(by-r-h-13))*.8+Math.abs(dx),above:yy+h+4<=by-r}); }
- C.sort((p,q)=>p.sc-q.sc); let best=C[0]; const prev=bossLbl.lay; if(prev){ const same=C.find(c=>c.mode===prev.mode&&c.dx===prev.dx); if(same&&same.sc<=best.sc+300) best=same; }
+ const prev=bossLbl.lay; if(FIELD_V2&&prev&&prev.w===w&&prev.h===h&&ov(prev.cx-w/2,prev.y0)===0) return prev;
+ C.sort((p,q)=>p.sc-q.sc); let best=C[0]; if(prev){ const same=C.find(c=>c.mode===prev.mode&&c.dx===prev.dx); if(same&&(same.sc<=best.sc+300||ov(same.cx-w/2,same.y0)===0)) best=same; }
  if(prev&&prev.mode===best.mode&&prev.dx===best.dx){ const k=.25; best={...best,cx:Math.round(prev.cx+(best.cx-prev.cx)*k),y0:Math.round(prev.y0+(best.y0-prev.y0)*k)}; } best.ov=ov(best.cx-w/2,best.y0); best.w=w; best.h=h; return best; }
 function drawBoss(){ const b=world.boss; if(!b) return; const t=world.t, x=Math.round(b.x), y=Math.round(b.y), r=b.r, hit=b.react>0, wob=hit?Math.round(Math.sin(now*60)*1.5):0, k=b.k, dmg=3-b.hp;
  if(b.dead){ if(!b.gone){ b.fade=(b.fade||0)+1/60; if(b.fade>1.2) b.gone=1; ctx.globalAlpha=Math.max(0,1-b.fade); dsc(x,y+b.fade*20,r*(1-b.fade*.5),'#c8b8e0'); ctx.globalAlpha=1; } return; }
@@ -1451,7 +1462,7 @@ function drawHouse(){ const night=isNight(); const tp=TAP(); swipePager=null;
  // шнурок-выключатель
  const pull=houseLampT&&now-houseLampT<.25?3:0; ctx.fillStyle='#1a0c22'; ctx.fillRect(lx+9,ly+10,1,12+pull); ctx.fillStyle='#ffd23c'; ctx.fillRect(lx+8,ly+22+pull,3,3);
  if(lit){ for(const [rr,al] of [[46,.07],[32,.08],[20,.10]]){ ctx.globalAlpha=night?al:al*.6; disc(lx,ly+14,rr,'#ffe066'); } ctx.globalAlpha=1; }
- { const lx0=Math.max(lx-26,4+TAP()+3), ly0=TAP()+8; buttons.push({x:lx0,y:ly0,w:Math.max(lx+26-lx0,52),h:ly+30-ly0,label:'lamp',cb:()=>toggleLamp()}); /* FB22: не перекрывает кнопку «назад» */ }
+ { const lx0=Math.max(lx-26,4+TAP()+3), ly0=TAP()+8; buttons.push({x:lx0,y:ly0,w:Math.max(lx+26-lx0,52,TAP()),h:Math.max(ly+30-ly0,TAP()),label:'lamp',cb:()=>toggleLamp()}); /* FB22: не перекрывает кнопку «назад» */ }
  // ковёр
  ctx.fillStyle='#1a0c22'; ctx.fillRect(14,fy+130,W-28,22); ctx.fillStyle='#c04a9a'; ctx.fillRect(16,fy+132,W-32,18); ctx.fillStyle='#ff8ad0'; for(let x=20;x<W-20;x+=8) ctx.fillRect(x,fy+140,4,2);
  iconBtn(4,4,icBack,()=>goBack(),'back'); T('Домик',W/2,tp/2-10,17,['#fff','#ffd23c']); candy(W-50,tp/2,now,0); T(String(save.candy|0),W-40,tp/2-8,14,'#ff8ad0','l');
@@ -1889,6 +1900,6 @@ try{ if(tg&&tg.onEvent) tg.onEvent('viewportChanged',rescale); }catch(e){}
 window.addEventListener('resize',rescale); for(const ms of [50,300,800]) setTimeout(rescale,ms);
 loadSprites().then(()=>{ buildSecretSprite(); if(!unlocked(selPick)) selPick=0; try{ if(save.selHyb&&hybList().includes(save.selHyb)){ const [a,b]=save.selHyb.split('_').map(Number); if(CHARS[a]&&CHARS[b]&&!fuseCheck(a,b)) fusion={a,b,level:null,used:false}; } else if(save.selSecret&&save.eggs&&save.eggs.secret) useSecret=true; }catch(e){} spritesReady=true; initMenuSlugs(); requestAnimationFrame(loop); });
 // хуки для тестов
-window.__game={wrapTxt:(a,b,c)=>wrapTxt(a,b,c),get wrapOvf(){return wrapOvf},set wrapOvf(v){wrapOvf=v},get ox(){return ox},get oy(){return oy},v4:{BOSS,WXN,QUESTS,HAPT,PAT,SECRET,BIO,get gyro(){return gyro},get mic(){return mic},get hLast(){return hLast},haptic:k=>haptic(k),isNight:()=>isNight(),setDate:d=>{DATE_OVR=d;},questsToday:()=>questsToday(),qEv:(i,n)=>qEv(i,n),hybAll:()=>hybAll(),hybList:()=>hybList(),houseOf:id=>houseOf(id),feedSlug:c=>feedSlug(c),petSlug:(c,h)=>petSlug(c,h,100,300),logoTap:()=>logoTap(),get relay(){return relay},get relayTeam(){return relayTeam},set relayTeam(v){relayTeam=v},relayTick:()=>relayTick(),gyroStart:()=>gyroStart(),micStart:()=>micStart(),set gyroG(v){gyro.on=true;gyro.g=v},set useSecret(v){useSecret=v},get useSecret(){return useSecret},wxFX:dt=>wxFX(dt),isApril1:()=>isApril1(),isHalloween:()=>isHalloween(),isNewYear:()=>isNewYear(),set houseSel(v){houseSel=v},set bestTab(v){bestTab=v},set bestPage(v){bestPage=v},set relayPick(v){relayPick=v}},FUSE_SPEC, fuseCheck:(a,b)=>fuseCheck(a,b), grafList:li=>grafList(li), GRAF_CAP, get chaos(){return chaosRun}, chaosStart:()=>chaosStart(), MODS, COSI, cos:()=>cosGet(), anchors:id=>anchors(id), drawSlugC:(...a)=>drawSlugC(...a), SECRETS:()=>SECRETS, gemsHave:()=>gemsHave(), get imp(){return {idleT,impStage,bubble}}, IMP_LINES, grafAdd:(...a)=>grafAdd(...a), grafClear:li=>grafClear(li), rescale:()=>rescale(), get menuSlugs(){return menuSlugs}, get H(){return H}, get W(){return W},get fusion(){return fusion}, set fusion(v){fusion=v}, get fusePick(){return fusePick}, set fusePick(v){fusePick=v}, fusedChar:(a,b)=>fusedChar(a,b), PC:()=>PC(), set fixDt(v){FIXDT=v}, openPause:()=>openPause(), get buttons(){return buttons}, TAP:()=>TAP(), get SC(){return SC}, get DPR(){return DPR},set selPage(v){selPage=v}, set lvlPage(v){lvlPage=v;lvlPageInit=true}, get lvlPage(){return lvlPage}, migrateSave, levelStars, isOpen, pc:()=>drawPlay.pc, unlocked, totalStars, save, get scene(){return scene}, set scene(v){scene=v}, startLevel, get world(){return world}, World, LV, CHARS, setChar:i=>{selPick=i}, get overlay(){return overlay}, toLevel:(x,y)=>[x*W/ (cv.getBoundingClientRect().width)]};
+window.__game={get fx(){return fx},get fy(){return fy},get SCS(){return SCS},get TMIN(){return TMIN},wrapTxt:(a,b,c)=>wrapTxt(a,b,c),get wrapOvf(){return wrapOvf},set wrapOvf(v){wrapOvf=v},get ox(){return ox},get oy(){return oy},v4:{BOSS,WXN,QUESTS,HAPT,PAT,SECRET,BIO,get gyro(){return gyro},get mic(){return mic},get hLast(){return hLast},haptic:k=>haptic(k),isNight:()=>isNight(),setDate:d=>{DATE_OVR=d;},questsToday:()=>questsToday(),qEv:(i,n)=>qEv(i,n),hybAll:()=>hybAll(),hybList:()=>hybList(),houseOf:id=>houseOf(id),feedSlug:c=>feedSlug(c),petSlug:(c,h)=>petSlug(c,h,100,300),logoTap:()=>logoTap(),get relay(){return relay},get relayTeam(){return relayTeam},set relayTeam(v){relayTeam=v},relayTick:()=>relayTick(),gyroStart:()=>gyroStart(),micStart:()=>micStart(),set gyroG(v){gyro.on=true;gyro.g=v},set useSecret(v){useSecret=v},get useSecret(){return useSecret},wxFX:dt=>wxFX(dt),isApril1:()=>isApril1(),isHalloween:()=>isHalloween(),isNewYear:()=>isNewYear(),set houseSel(v){houseSel=v},set bestTab(v){bestTab=v},set bestPage(v){bestPage=v},set relayPick(v){relayPick=v}},FUSE_SPEC, fuseCheck:(a,b)=>fuseCheck(a,b), grafList:li=>grafList(li), GRAF_CAP, get chaos(){return chaosRun}, chaosStart:()=>chaosStart(), MODS, COSI, cos:()=>cosGet(), anchors:id=>anchors(id), drawSlugC:(...a)=>drawSlugC(...a), SECRETS:()=>SECRETS, gemsHave:()=>gemsHave(), get imp(){return {idleT,impStage,bubble}}, IMP_LINES, grafAdd:(...a)=>grafAdd(...a), grafClear:li=>grafClear(li), rescale:()=>rescale(), get menuSlugs(){return menuSlugs}, get H(){return H}, get W(){return W},get fusion(){return fusion}, set fusion(v){fusion=v}, get fusePick(){return fusePick}, set fusePick(v){fusePick=v}, fusedChar:(a,b)=>fusedChar(a,b), PC:()=>PC(), set fixDt(v){FIXDT=v}, openPause:()=>openPause(), get buttons(){return buttons}, TAP:()=>TAP(), get SC(){return SC}, get DPR(){return DPR},set selPage(v){selPage=v}, set lvlPage(v){lvlPage=v;lvlPageInit=true}, get lvlPage(){return lvlPage}, migrateSave, levelStars, isOpen, pc:()=>drawPlay.pc, unlocked, totalStars, save, get scene(){return scene}, set scene(v){scene=v}, startLevel, get world(){return world}, World, LV, CHARS, setChar:i=>{selPick=i}, get overlay(){return overlay}, toLevel:(x,y)=>[x*W/ (cv.getBoundingClientRect().width)]};
 window.__fb={houseAsleep:c=>houseAsleep(c),bubLayout:f=>bubLayout(f),get houseFX(){return houseFX},houseBubble:(a,x,y,c,b)=>houseBubble(a,x,y,c,b),get menuVar(){return MENU_VAR},set menuVar(v){MENU_VAR=v},get bossLbl(){return bossLbl},fed:{get sess(){return fedSess},fedN,end:()=>endFedSession()},bossLblDraw:()=>drawBossLabel(),night:{tapFirefly:(i)=>{ const fy=Math.round(Math.max(TAP()+150,Math.min(H*.36,H-360))); const p=ffPos(i,fy,TAP()); tapFirefly(i,p[0],p[1]); return p; },tapStar:()=>tapStar(),starPh:()=>starPh(),state:(k,id)=>nightState(k,id),get darkT(){return houseDarkT},set darkT(v){houseDarkT=v},sleepSprite:id=>sleepSprite(id),capSprite:k=>capSprite(k),MUMBLE,get fx(){return houseFX},pop:()=>nightPop,ffPos:i=>{ const fy=Math.round(Math.max(TAP()+150,Math.min(H*.36,H-360))); return ffPos(i,fy,TAP()); }},spr:id=>SPR[id],drawFace:(a,it,px,py,g)=>drawFace(a,it,px,py,g),get nastya(){return nastya},set nastya(v){nastya=v},nastyaTap:m=>nastyaTap(m),toggleLamp:()=>toggleLamp(),showReveal:(k,c)=>showReveal(k,c),get reveal(){return reveal},selectHybrid:(a,b)=>selectHybrid(a,b),hybPairs:()=>hybPairs(),set selTab(v){selTab=v},get selTab(){return selTab},set fusePick(v){fusePick=v},anchors:id=>anchors(id),COSI,accPos:(a,it)=>accPos(a,it),SECRET,get fusion(){return fusion},candySprite:v=>candySprite(v),houseOf:id=>houseOf(id),drawSlugC:(...a)=>drawSlugC(...a),get ctx(){return ctx},gfxReset:()=>gfxReset(),onHide:()=>onHide(),onResume:()=>onResume(),get resumes(){return resumes},get floats(){return floats}};
 })();
