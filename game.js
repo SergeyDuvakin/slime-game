@@ -1,5 +1,5 @@
 'use strict';
-window.__ASSET_V='4.2.0';
+window.__ASSET_V='4.2.1';
 /* FB14: долгое нажатие — без выделения текста, лупы и контекстного меню (Telegram WebView / iOS / Android); поля ввода не трогаем */
 (()=>{ const editable=t=>!!(t&&t.closest&&t.closest('input,textarea,select,[contenteditable]')); const stop=e=>{ if(!editable(e.target)) e.preventDefault(); };
  ['contextmenu','selectstart','dragstart','gesturestart'].forEach(k=>document.addEventListener(k,stop,{passive:false,capture:true}));
@@ -9,6 +9,8 @@ window.__ASSET_V='4.2.0';
 /* ШМЯКОДРОМ — пиксельная мини-игра про слизней-рогаток. Vanilla JS + Canvas. */
 (()=>{
 const K=4/3; let LW=320, LH=588; const R=13, MAXDRAG=104, G0=620*K;
+// Ф1м (ТЗ 26.9.6 + 26.10.11): магнит Медка — захват насовсем, разгон, радиус +бонус за скорость. Скорости/радиусы ×K
+const MAG={R0:80,RBK:.05,RBMAX:40,V0:150,ACC:1800,VMAX:1000,MARGIN:120,PICK:17,RESET_T:.25,TRAIL:6,POP_GAP:.06};
 const SPLAT_V=470*K;
 const CHARS=[
  {id:'slug01',name:'Желейка',perk:'Супер-прыгучая',desc:'Отскакивает как мячик',col:'#a57af0',rest:.72,fric:.6,power:1,grav:1,splat:1.25},
@@ -25,7 +27,7 @@ const CHARS=[
  {id:'slug43',name:'Лампа',perk:'Горячая лава',desc:'Растапливает лёд касанием',col:'#b48ae0',ab:'melt'},
  {id:'slug44',name:'Мумия',perk:'Бинты',desc:'Шипы не отнимают бросок',col:'#e8e2d8',ab:'refund'},
  {id:'slug45',name:'Парашютист',perk:'Парашют',desc:'Тап в полёте — плавный спуск',col:'#4a9aff',ab:'chute',tap:1},
- {id:'slug46',name:'Медок',perk:'Пчёлка-магнит',desc:'Притягивает конфеты к себе',col:'#f0a828',ab:'magnet'},
+ {id:'slug46',name:'Медок',perk:'Пчёлка-магнит',desc:'Тянет конфеты даже на лету',col:'#f0a828',ab:'magnet'},
  {id:'slug47',name:'Тучка',perk:'Ливень',desc:'Тап в полёте — камнем вниз',col:'#c8d0e0',ab:'dive',tap:1},
  {id:'slug48',name:'Кактус',perk:'Колючки',desc:'Ломает ящики касанием',col:'#62bc34',ab:'crush'},
  {id:'slug49',name:'Баночник',perk:'Банка-щит',desc:'Раз за уровень спасает от шипов',col:'#78c840',ab:'shield'},
@@ -124,6 +126,7 @@ const SFX={
  boing:()=>{tone(150,.35,'triangle',.35,3.5);tone(300,.2,'square',.1,2.5)},
  splat:()=>{noise(.35,.5,900);tone(120,.3,'sawtooth',.25,.35)},
  candy:n=>{[0,4,7,12].forEach((s,i)=>tone(880*Math.pow(2,(s+n*2)/12),.09,'square',.12,1,i*.05))},
+ pop:n=>{tone(1320*Math.pow(2,(n|0)*2/12),.035,'square',.084,.35);tone(2200,.02,'triangle',.06,.5,.01)},
  bumper:()=>{tone(520,.12,'square',.2,1.8);tone(780,.1,'triangle',.15,1.4,.04)},
  portal:()=>{tone(300,.35,'sine',.3,4);tone(450,.35,'triangle',.15,.3)},
  ouch:()=>{tone(400,.08,'sawtooth',.25,.5);tone(200,.25,'square',.2,.4,.08);noise(.2,.25,2000)},
@@ -350,7 +353,7 @@ class World{
   this.bumpers=(L.bu||[]).map(b=>({x:b[0],y:b[1],r:b[2],hit:0}));
   this.portals=(L.po||[]); this.fans=(L.fa||[]); this.water=(L.wa||[]);
   this.buttons=(L.bt||[]).map(b=>({x:b[0],y:b[1],id:b[2],on:false}));
-  this.candies=L.c.map(c=>({x:c[0],y:c[1],got:false})); this.gem=L.gm?{x:L.gm[0],y:L.gm[1],got:false}:null;
+  this.candies=L.c.map(c=>({x:c[0],y:c[1],x0:c[0],y0:c[1],got:false,cap:false,hv:0,rt:0,rx:0,ry:0,tr:new Float32Array(MAG.TRAIL*2),trN:0,trI:0,trT:0})); this.gem=L.gm?{x:L.gm[0],y:L.gm[1],got:false}:null;
   this.shots=L.shots+(this.ch.extra||0); this.used=0; this.got=0; this.shield=this.has('shield')?1:0;
   this.s=this.mkBody(L.start[0],L.start[1]); this.clone=null;
   this.ev=[]; this.result=null; this.slow=false; this.tilt=0; this.wind=0; this.v4init(); this.updMovers(0); }
@@ -388,9 +391,26 @@ class World{
   for(const o of this.solids) o.hit=Math.max(0,o.hit-dt);
   const n0=this.ev.length, st0=this.s.st; this.body(this.s,dt,true); this.v4post(this.s,dt); this.comboTick(n0,st0);
   if(this.clone){ const c=this.clone; this.body(c,dt,false); if(c.st!=='fly'||c.fly>6||this.s.st==='idle'){ this.ev.push(['poofclone',c.x,c.y]); this.clone=null; } }
-  // магнит
-  if(this.has('magnet')&&this.s.st!=='poof') for(const c of this.candies) if(!c.got){ const dx=this.s.x-c.x, dy=this.s.y-c.y, d=Math.hypot(dx,dy); if(d<64&&d>1){ c.x+=dx/d*90*K*dt; c.y+=dy/d*90*K*dt; } }
+  // магнит (Ф1м, ТЗ 26.9): только главный слизень this.s, только конфеты
+  if(this.has('magnet')) this.magStep(dt);
  }
+ pickCandy(c,mag){ c.got=true; c.cap=false; this.got++; if(this.has('juicy')){ this.shots++; this.ev.push(['juicy',c.x,c.y]); } this.ev.push(['candy',c.x,c.y,this.got,mag?1:0]); }
+ /* прямая видимость: отрезок не пересекает твёрдые блоки (кроме шипов 's' и односторонних 'o'); проверка только при захвате */
+ losFree(x1,y1,x2,y2){ const dx=x2-x1, dy=y2-y1; for(const o of this.allSolids()){ if(o.type==='s'||o.type==='o') continue; let t0=0,t1=1; const P=[-dx,dx,-dy,dy], Q=[x1-o.x,o.x+o.w-x1,y1-o.y,o.y+o.h-y1]; let hit=true;
+   for(let i=0;i<4;i++){ if(P[i]===0){ if(Q[i]<0){ hit=false; break; } } else { const r=Q[i]/P[i]; if(P[i]<0){ if(r>t1){ hit=false; break; } if(r>t0) t0=r; } else { if(r<t0){ hit=false; break; } if(r<t1) t1=r; } } }
+   if(hit&&t0<=t1) return false; } return true; }
+ magStep(dt){ const s=this.s, M=MAG, sp=Math.hypot(s.vx,s.vy);
+  for(const c of this.candies){ if(c.got) continue;
+   if(s.st==='poof'&&c.cap){ c.cap=false; c.hv=0; c.rt=M.RESET_T; c.rx=c.x; c.ry=c.y; }
+   if(c.rt>0){ c.rt=Math.max(0,c.rt-dt); const k=c.rt/M.RESET_T, e=k*k; c.x=c.x0+(c.rx-c.x0)*e; c.y=c.y0+(c.ry-c.y0)*e; this.magTrail(c,dt); continue; }
+   if(s.st==='poof'||s.st==='win'){ if(c.trN) this.magTrail(c,dt,true); continue; }
+   let dx=s.x-c.x, dy=s.y-c.y, d=Math.hypot(dx,dy);
+   if(!c.cap){ if(c.trN) this.magTrail(c,dt,true); const r=(M.R0+(s.st==='fly'?Math.min(M.RBMAX,sp/K*M.RBK):0))*K; if(d>=r||!this.losFree(s.x,s.y,c.x,c.y)) continue; c.cap=true; c.hv=M.V0*K; this.ev.push(['magcap',c.x,c.y]); }
+   const fl=sp+M.MARGIN*K, vmax=Math.max(M.VMAX*K,fl); c.hv=Math.min(vmax,Math.max(c.hv+M.ACC*K*dt,fl));
+   const stp=Math.min(d,c.hv*dt); if(d>0){ c.x+=dx/d*stp; c.y+=dy/d*stp; } this.magTrail(c,dt);
+   if(Math.hypot(s.x-c.x,s.y-c.y)<M.PICK) this.pickCandy(c,true); } }
+ /* шлейф: кольцо из MAG.TRAIL точек, шаг 1/60 с, без аллокаций; fade — точки гаснут */
+ magTrail(c,dt,fade){ c.trT+=dt; if(c.trT<1/60) return; c.trT=0; if(fade){ c.trN=Math.max(0,c.trN-1); return; } c.tr[c.trI*2]=c.x; c.tr[c.trI*2+1]=c.y; c.trI=(c.trI+1)%MAG.TRAIL; if(c.trN<MAG.TRAIL) c.trN++; }
  // B3: комбо-рикошеты (только главный слизень, только в одном полёте)
  comboTick(n0,st0){ const s=this.s; if(this.comboPend===undefined){ this.combo=0; this.comboPend=0; this.comboBank=0; this.comboMax=0; this.lastBT=-9; }
   if(st0==='fly'||s.st==='fly') for(let i=n0;i<this.ev.length;i++){ const e=this.ev[i]; const k=e[0];
@@ -463,7 +483,7 @@ class World{
    s.bumpN++; if(s.bumpN<=6){ s.vx+=nx*140*K; s.vy+=ny*140*K; const sp=Math.hypot(s.vx,s.vy); if(sp<360*K){s.vx*=360*K/sp;s.vy*=360*K/sp;} } else { s.vx*=.7; s.vy*=.7; }
    b.hit=.25; this.ev.push(['bumper',b.x,b.y,b]); } }
   if(s.pcd<=0) for(const p of this.portals){ for(let k=0;k<2;k++){ const ax=p[k*2],ay=p[k*2+1]; if(Math.hypot(s.x-ax,s.y-ay)<13){ const bx=p[2-k*2],by=p[3-k*2]; this.ev.push(['portal',ax,ay,bx,by]); s.x=bx; s.y=by; s.pcd=.6; break; } } }
-  for(const c of this.candies) if(!c.got&&Math.hypot(s.x-c.x,s.y-c.y)<17){ c.got=true; this.got++; if(this.has('juicy')){ this.shots++; this.ev.push(['juicy',c.x,c.y]); } this.ev.push(['candy',c.x,c.y,this.got]); }
+  for(const c of this.candies) if(!c.got&&Math.hypot(s.x-c.x,s.y-c.y)<MAG.PICK) this.pickCandy(c,c.cap);
   if(this.gem&&!this.gem.got&&Math.hypot(s.x-this.gem.x,s.y-this.gem.y)<17){ this.gem.got=true; this.ev.push(['gem',this.gem.x,this.gem.y]); }
   const g0=this.L.goal; if(Math.abs(s.x-g0[0])<14&&s.y>g0[1]-36&&s.y<g0[1]+2){ if(!main){ this.s.x=s.x; this.s.y=s.y; this.s.vx=this.s.vy=0; this.clone=null; } const m=this.s; m.st='win'; m.at=0; m.vx=m.vy=0; this.result='win'; this.ev.push(['win']); return; }
   // отдых
@@ -509,7 +529,7 @@ class World{
  eatTick(s,dt){ const b=this.boss; s.eat-=dt; if(b){ s.x=b.x; s.y=b.y; } if(s.eat<=0){ s.eat=0; s.vy=-520*K; s.vx=(s.x<LW/2?1:-1)*120*K; s.y-=(b?b.r:0)+R+2; s.hist=[]; s.histT=0; if(b) b.cd=1.2; this.ev.push(['spit',s.x,s.y]); } }
  // полная симуляция для диско-прицела и солвера
  snapshot(){ const w=new World(this.li,this.ch,this.L); w.mod=this.mod; w.t=this.t; w.updMovers(0);
-  this.solids.forEach((o,i)=>{w.solids[i].alive=o.alive}); this.buttons.forEach((b,i)=>{w.buttons[i].on=b.on}); this.candies.forEach((c,i)=>Object.assign(w.candies[i],c)); if(this.gem) w.gem={...this.gem};
+  this.solids.forEach((o,i)=>{w.solids[i].alive=o.alive}); this.buttons.forEach((b,i)=>{w.buttons[i].on=b.on}); this.candies.forEach((c,i)=>{ const tr=w.candies[i].tr; Object.assign(w.candies[i],c); w.candies[i].tr=tr; w.candies[i].trN=0; }); if(this.gem) w.gem={...this.gem};
   Object.assign(w.s,JSON.parse(JSON.stringify({...this.s,ground:null}))); w.s.ground=null; w.shots=this.shots; w.got=this.got; w.shield=this.shield; w.tilt=this.tilt; if(this.boss) w.boss=JSON.parse(JSON.stringify(this.boss)); if(this.wx) w.wx={...this.wx}; w.wxNow=this.wxNow; return w; }
 }
 
@@ -548,6 +568,12 @@ function candySprite(v){ if(candyCache[v]) return candyCache[v]; const P=CANDY_P
  const [c,x]=mk(Wd,Hd); for(let y=0;y<Hd;y++)for(let q=0;q<Wd;q++){ if(g[y][q]) continue; let nb=false; for(const [a,b] of [[1,0],[-1,0],[0,1],[0,-1]]){ const yy=y+b, xx=q+a; if(yy>=0&&yy<Hd&&xx>=0&&xx<Wd&&g[yy][xx]&&g[yy][xx]!=='o') nb=true; } if(nb) g[y][q]='o'; }
  for(let y=0;y<Hd;y++)for(let q=0;q<Wd;q++){ const k=g[y][q]; if(!k) continue; x.fillStyle=k==='o'?'#1a0c22':P[k]; x.fillRect(q,y,1,1); }
  return candyCache[v]=c; }
+let magPopT=-9;
+/* Ф1м: золотой шлейф захваченной конфеты — пиксели 3→1, #ffd23c → #f0a828, гаснет по альфе; ночью ярче (+.15) */
+function drawMagTrails(){ const nb=isNight()?.15:0, N=MAG.TRAIL; for(const c of world.candies){ if(c.got||!c.trN) continue; let px=c.x, py=c.y, L=0; const tot=c.trN*12;
+  for(let j=0;j<c.trN;j++){ const idx=((c.trI-1-j)%N+N)%N, qx=c.tr[idx*2], qy=c.tr[idx*2+1], sl=Math.hypot(qx-px,qy-py), n=Math.max(1,Math.ceil(sl/2));
+   for(let k=1;k<=n;k++){ const d=L+sl*k/n; if(d<5) continue; const f=Math.max(0,1-d/Math.max(36,tot)), sz=f>.6?3:f>.3?2:1; if(f<=0) break; ctx.globalAlpha=Math.min(1,.2+.7*f+nb); ctx.fillStyle=f>.5?'#ffd23c':'#f0a828'; ctx.fillRect(Math.round(px+(qx-px)*k/n-sz/2),Math.round(py+(qy-py)*k/n-sz/2),sz,sz); }
+   L+=sl; px=qx; py=qy; } } ctx.globalAlpha=1; }
 function candy(x,y,t,i){ const b=Math.round(Math.sin(t*3+i)*2); const v=i%3, c=CANDY_PAL[v].m;
  x=Math.round(x); y=Math.round(y)+b;
  ctx.globalAlpha=.22+.13*Math.sin(t*5+i); ctx.fillStyle=c; ctx.fillRect(x-7,y-1,15,3); ctx.fillRect(x-1,y-7,3,15); ctx.globalAlpha=1;
@@ -915,6 +941,7 @@ function handleEvents(){ const ch=PC(); for(const e of world.ev){ const [k,x,y]=
  if(k==='bounce'){ sfx('bounce',e[3]); squash=Math.min(1,e[3]/450); sqDir=[e[4],e[5]]; burst(x-e[4]*R,y-e[5]*R,4+(e[3]/80|0),[ch.col,'#fff'],e[3]*.25,0,.4); if(e[3]>300){shake=Math.max(shake,2);haptic('light');} }
  if(k==='boing'){ sfx('boing'); squash=1; sqDir=[0,-1]; burst(x,y+10,14,['#ff4fa8','#ff9ad0','#fff'],140,60,.6); if(e[3])e[3].hit=.3; shake=Math.max(shake,2); haptic('light'); }
  if(k==='splat'){ grafAdd(curLevel,x,y+R-2,ch.col,0); sfx('splat'); haptic('heavy'); shake=5; flash=.08; burst(x,y+10,26,[ch.col,ch.col,'#fff','#1a0c22'],170,80,.8); for(let i=0;i<7;i++) decals.push({x:x+(Math.random()*44-22)|0,y:y+R-1+(Math.random()*2|0),w:2+Math.random()*4|0,c:ch.col}); floats.push({s:['ШМЯК!','ПЛЮХ!','ХЛЮП!'][Math.random()*3|0],x,y:y-30,t:0,life:.9,size:14,col:['#fff','#ffd23c']}); sAnim={a:'splat',t:0}; }
+ if(k==='candy'&&e[4]){ if(now-magPopT>=MAG.POP_GAP){ magPopT=now; sfx('pop',e[3]); } for(let i=0;i<6;i++){ const a=i/6*Math.PI*2+Math.random()*.5, v=(20+Math.random()*10)/.3; parts.push({x,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v,life:.3,t:0,c:i%2?'#fff4b0':'#ffd23c',g:0,s:2}); } }
  if(k==='candy'){ sfx('candy',e[3]); haptic('light'); burst(x,y,16,['#ffd23c','#fff','#ff4a8a','#4ef0b0'],120,40,.7,120); floats.push({s:'+'+e[3],x,y:y-14,t:0,life:.8,size:11,col:'#ffd23c'}); }
  if(k==='bumper'){ sfx('bumper'); burst(x,y,8,['#ff4a6a','#fff'],110,0,.4); shake=Math.max(shake,2.5); haptic('light'); }
  if(k==='portal'){ sfx('portal'); burst(x,y,14,['#7a5aff','#4ef0ff'],90,0,.5,0); burst(e[3],e[4],14,['#ffb03c','#ffe066'],90,0,.5,0); }
@@ -979,7 +1006,7 @@ function drawPlay(){ const s=world.s, ti=themeOf(curLevel), th=THEMES[ti], ch=PC
  for(const b of world.bumpers) bumper(b,now);
  for(const p of world.portals){ portal(p[0],p[1],now,0); portal(p[2],p[3],now,1); }
  jar(world.L.goal[0],world.L.goal[1],now,world.result==='win');
- world.candies.forEach((c,i)=>{ if(!c.got) candy(c.x,c.y,now,i); }); drawBoss();
+ if(world.has('magnet')) drawMagTrails(); world.candies.forEach((c,i)=>{ if(!c.got) candy(c.x,c.y,now,i); }); drawBoss();
  for(const p of parts) if(p.trail){ ctx.globalAlpha=1-p.t/p.life; ctx.fillStyle=p.c; ctx.fillRect(p.x|0,p.y|0,1,1);} ctx.globalAlpha=1;
  // траектория
  if(drag&&s.st==='idle'){ let dx=drag.cx-drag.x0, dy=drag.cy-drag.y0; const l=Math.hypot(dx,dy); if(l>8){
