@@ -1,5 +1,5 @@
 'use strict';
-window.__ASSET_V='4.2.1';
+window.__ASSET_V='4.2.2';
 /* FB14: долгое нажатие — без выделения текста, лупы и контекстного меню (Telegram WebView / iOS / Android); поля ввода не трогаем */
 (()=>{ const editable=t=>!!(t&&t.closest&&t.closest('input,textarea,select,[contenteditable]')); const stop=e=>{ if(!editable(e.target)) e.preventDefault(); };
  ['contextmenu','selectstart','dragstart','gesturestart'].forEach(k=>document.addEventListener(k,stop,{passive:false,capture:true}));
@@ -8,7 +8,7 @@ window.__ASSET_V='4.2.1';
  document.addEventListener('selectionchange',()=>{ const sl=window.getSelection&&window.getSelection(); if(sl&&sl.rangeCount&&!editable(document.activeElement)) sl.removeAllRanges(); }); })();
 /* ШМЯКОДРОМ — пиксельная мини-игра про слизней-рогаток. Vanilla JS + Canvas. */
 (()=>{
-const K=4/3; let LW=320, LH=588; const R=13, MAXDRAG=104, G0=620*K;
+const K=4/3; let LW=320, LH=588; const R=13, RB=13, MAXDRAG=104, G0=620*K;
 // Ф1м (ТЗ 26.9.6 + 26.10.11): магнит Медка — захват насовсем, разгон, радиус +бонус за скорость. Скорости/радиусы ×K
 const MAG={R0:80,RBK:.05,RBMAX:40,V0:150,ACC:1800,VMAX:1000,MARGIN:120,PICK:17,RESET_T:.25,TRAIL:6,POP_GAP:.06};
 const SPLAT_V=470*K;
@@ -105,7 +105,7 @@ function audioInit(){ if(AC) { if(AC.state==='suspended')AC.resume(); return; }
  try{AC=new (window.AudioContext||window.webkitAudioContext)();}catch(e){return;}
  master=AC.createGain(); master.gain.value=save.mute?0:.5; master.connect(AC.destination);
  musicGain=AC.createGain(); musicGain.gain.value=.11; musicGain.connect(master); startMusic(); }
-function tone(f,d,type='square',v=.3,slide=0,delay=0){ if(!AC)return; const t=AC.currentTime+delay;
+function tone(f,d,type='square',v=.3,slide=0,delay=0){ if(!AC)return; const t=AC.currentTime+delay; { const m=typeof chaosRun!=='undefined'&&chaosRun&&chaosRun.mod; if(m&&m.ts) f*=m.ts<1?.7:1.2; }
  const o=AC.createOscillator(),g=AC.createGain(); o.type=type; o.frequency.setValueAtTime(f,t);
  if(slide) o.frequency.exponentialRampToValueAtTime(Math.max(30,f*slide),t+d);
  g.gain.setValueAtTime(v,t); g.gain.exponentialRampToValueAtTime(.001,t+d); o.connect(g); g.connect(master); o.start(t); o.stop(t+d+.02); }
@@ -362,7 +362,7 @@ class World{
  previewPath(dx,dy,frames=150){ const w=this.snapshot(); const pts=[], ev=[]; if(!w.launch(dx,dy)) return {pts,ev,w}; for(let f=0;f<frames&&w.s.st==='fly'&&!w.result;f++){ const sd=(1/60)*(w.mod&&w.mod.ts||1), n=Math.min(24,Math.max(4,Math.ceil(Math.hypot(w.s.vx,w.s.vy)*sd/5))); for(let i=0;i<n&&w.s.st==='fly'&&!w.result;i++){ w.step(sd/n); for(const e of w.ev) ev.push(e[0]); w.ev.length=0; } pts.push([w.s.x,w.s.y]); } return {pts,ev,w}; }
  softZone(s,wat){ if(s.fly<.15) return null; if(!this.has('sponge')){ const w=wat||(s.flo&&s.x>=s.flo[0]&&s.x<=s.flo[0]+s.flo[2]&&s.y<s.flo[1]&&s.y>s.flo[1]-2.4*R?s.flo:null); if(wat) s.flo=wat; if(w&&!(s.vy<-330*K&&s.y<w[1])) return {k:'water',ty:w[1]+4}; if(!w) s.flo=null; }
   for(const f of this.fans){ if(s.x>=f[0]&&s.x<=f[0]+f[2]&&s.y>f[1]-2.2*R&&s.y<f[1]+2.6*R&&Math.abs(s.vy)<330*K&&s.fly>.3) return {k:'fan',ty:f[1]+2}; } return null; }
- touchSpike(x,y){ for(const o of this.allSolids()) if(o.type==='s'&&circRect(x,y,R-1,o.x,o.y,o.w,o.h)) return true; return false; }
+ touchSpike(x,y){ const R=RB*(this.mod&&this.mod.hit||1); for(const o of this.allSolids()) if(o.type==='s'&&circRect(x,y,R-1,o.x,o.y,o.w,o.h)) return true; return false; }
  keyOK(k){ const c=this.ch; return c.id===k||!!(c.fuse&&c.fuse.some(i=>CHARS[i].id===k)); }
  mkBody(x,y){ return {x,y,vx:0,vy:0,st:'idle',at:0,lx:x,ly:y,ground:null,pcd:0,fly:0,padN:0,padT:0,bumpN:0,gs:1,used:false,chute:false,ghost:0,hover:false,wall:false,hist:[],histT:0}; }
  updMovers(dt){ for(const m of this.movers){ const a=(this.t/m.t)*Math.PI*2+(m.ph||0)/m.t*Math.PI*2; const nx=m.bx+Math.sin(a)*m.ax, ny=m.by+Math.sin(a)*m.ay;
@@ -370,7 +370,7 @@ class World{
  allSolids(){ return this.solids.filter(o=>o.alive).concat(this.movers); }
  canLaunch(){ const s=this.s; return s.st==='idle'&&this.shots>0&&!this.result; }
  launch(dx,dy){ const s=this.s; if(!this.canLaunch()) return false; if(this.mod&&this.mod.inv){ dx=-dx; dy=-dy; } let l=Math.hypot(dx,dy); if(l<8) return false; const k=Math.min(l,MAXDRAG)/l;
-  const v=560*K*this.ch.power/MAXDRAG; s.vx=-dx*k*v; s.vy=-dy*k*v; s.st='fly'; s.fly=0; s.lx=s.x; s.ly=s.y; s.used=false; s.chute=false; s.gs=1; s.ghost=0; s.hover=false; s.wall=false; s.padN=0; s.bumpN=0; s.spN=0; s.flo=null; s.zone=null; s.zoneT=0; s.hist=[]; s.histT=0; s.shout=false; s.gp=0; s.eat=0; s.tapI=0;
+  const v=560*K*this.ch.power*(this.mod&&this.mod.pw||1)/MAXDRAG; s.vx=-dx*k*v; s.vy=-dy*k*v; s.st='fly'; s.fly=0; s.lx=s.x; s.ly=s.y; s.used=false; s.chute=false; s.gs=1; s.ghost=0; s.hover=false; s.wall=false; s.padN=0; s.bumpN=0; s.spN=0; s.flo=null; s.zone=null; s.zoneT=0; s.hist=[]; s.histT=0; s.shout=false; s.gp=0; s.eat=0; s.tapI=0;
   if(!this.inf) this.shots--; this.used++; this.ev.push(['launch']); return true; }
  // активная способность (тап в полёте)
  ability(){ const s=this.s; if(s.st!=='fly'||s.used) return false; const a=this.taps[s.tapI|0]; if(!a) return false; const ok=this.ability1(a); if(ok){ s.tapI=(s.tapI|0)+1; s.used=s.tapI>=this.taps.length; } return ok; }
@@ -382,7 +382,7 @@ class World{
   if(a==='ghost'){ s.ghost=.45; s.used=true; this.ev.push(['ab','ghost',s.x,s.y]); return true; }
   if(a==='gflip'){ s.gs=-1; s.vy=Math.min(s.vy,0)-60*K; s.used=true; this.ev.push(['ab','gflip',s.x,s.y]); return true; }
   return false; }
- support(b){ if(b.wall||b.hover) return true; if(b.y>=LH-R-.5) return true; if(this.inWater(b)) return true;
+ support(b){ const R=RB*(this.mod&&this.mod.hit||1); if(b.wall||b.hover) return true; if(b.y>=LH-R-.5) return true; if(this.inWater(b)) return true;
   for(const o of this.allSolids()){ if(o.type==='s') continue; if(o.type==='o'&&b.y>o.y-R+3) continue; if(circRect(b.x,b.y+2.5,R,o.x,o.y,o.w,o.h)){ if(o.mover||o.type==='v') b.ground=o; return true;} } return false; }
  inWater(b){ for(const w of this.water) if(inRect(b.x,b.y,w)) return w; return null; }
  settle(b,why){ b.vx=0; b.vy=0; b.st='idle'; b.gs=1; b.chute=false; b.ghost=0; if(why==='hover') b.hover=true; this.ev.push(['rest',why||'']); }
@@ -418,7 +418,7 @@ class World{
   if(st0!=='fly'&&s.st==='fly'){ this.lastBO=null; }
   if(st0==='fly'&&s.st!=='fly'){ if(s.st==='poof'){ if(this.combo>=2) this.ev.push(['combolost',this.combo,s.x,s.y]); } else this.comboBank+=this.comboPend; this.comboPend=0; this.combo=0; } }
  scoreNow(){ return (this.result==='win'?1000:0)+(this.has('lucky')?350:250)*this.got+(this.result==='win'?300*Math.max(0,this.shots):0)+(this.comboBank||0)+(this.result==='win'?(this.comboPend||0):0); }
- body(s,dt,main){ const ch=this.ch;
+ body(s,dt,main){ const ch=this.ch; const R=RB*(this.mod&&this.mod.hit||1), HK=R/RB; /* Х-4: хитбокс великана/крошки */
   if(s.inv>0) s.inv-=dt;
   if(s.st==='idle'){ const ox0=s.x, oy0=s.y; if(s.ground&&(s.ground.mover)&&!s.wall&&!s.hover){ s.x+=s.ground.dx; s.y+=s.ground.dy; }
    if(s.ground&&s.ground.type==='v'&&!s.wall&&!s.hover) s.x+=s.ground.arg*38*K*dt;
@@ -432,7 +432,7 @@ class World{
   if(s.eat>0){ this.eatTick(s,dt); return; }
   s.fly+=dt; s.pcd-=dt; s.padT+=dt; if(s.padT>2.6) s.padN=0;
   // гравитация, вода, ветер
-  let g=G0*ch.grav*s.gs*(this.mod&&this.mod.g||1); if(this.has('glide')) g*=.5; if(this.mod&&this.mod.wind) s.vx+=this.mod.wind*K*dt; if(this.wind) s.vx+=this.wind*K*dt; if(this.tilt) s.vx+=this.tilt*K*dt; if(s.chute){ g*=.4; }
+  let g=G0*ch.grav*s.gs*(this.mod&&this.mod.g||1); if(this.has('glide')) g*=.5; { const wsum=this.windSum(); if(wsum) s.vx+=wsum*K*dt; } /* Х-2: ветер Хаоса + погода, |w|≤300 */ if(this.tilt) s.vx+=this.tilt*K*dt; if(s.chute){ g*=.4; }
   const wat=this.inWater(s);
   /* FB19: вода/вентилятор — мягкая пружина к точке покоя: 2–3 затухающих покачивания и плавная остановка */
   const zn=this.softZone(s,wat); s.zone=zn;
@@ -440,7 +440,7 @@ class World{
   else { s.zoneT=0;
   if(wat&&!this.has('sponge')){ g=-G0*.5; s.vx*=Math.pow(.25,dt); s.vy*=Math.pow(.15,dt); }
   for(const f of this.fans) if(inRect(s.x,s.y,f)){ s.vy-=(f[4]||900)*K*dt*(this.has('glide')||s.chute?1.4:1); } }
-  s.vy+=g*dt; if(s.chute&&s.vy>70*K) s.vy=70*K; if(s.vy>900*K) s.vy=900*K; if(s.vy<-900*K) s.vy=-900*K; if(s.vx>1100*K) s.vx=1100*K; if(s.vx<-1100*K) s.vx=-1100*K;
+  s.vy+=g*dt; if(s.chute&&s.vy>70*K) s.vy=70*K; { const vc=900*K*(this.mod&&this.mod.vcap||1); if(s.vy>vc) s.vy=vc; } if(s.vy<-900*K) s.vy=-900*K; if(s.vx>1100*K) s.vx=1100*K; if(s.vx<-1100*K) s.vx=-1100*K;
   s.x+=s.vx*dt; s.y+=s.vy*dt;
   if(!isFinite(s.x)||!isFinite(s.y)){ s.x=this.touchSpike(s.lx,s.ly)?this.L.start[0]:s.lx; s.y=this.touchSpike(s.lx,s.ly)?this.L.start[1]:s.ly; this.settle(s,'nan'); return; }
   let grounded=null;
@@ -470,26 +470,31 @@ class World{
     if(this.has('wall')&&Math.abs(c.nx)>.7&&main){ this.settle(s,'wall'); s.wall=true; s.ground=o; this.ev.push(['stick',s.x,s.y]); return; }
     if(o.type==='w'&&Math.abs(c.nx)>.7&&main){ this.settle(s,'wall'); s.wall=true; s.ground=o; this.ev.push(['stick',s.x,s.y]); return; }
     if(s.gs<0&&c.ny>.6){ s.gs=1; }
+    if(this.mod&&this.mod.sticky&&imp>40*K){ /* Х-1: липучка гасит любой отскок */ this.ev.push(['goo',s.x-c.nx*R,s.y-c.ny*R,imp,c.nx,c.ny]);
+     if(Math.abs(c.nx)>.7&&main&&!o.mover){ this.settle(s,'wall'); s.wall=true; s.ground=o; this.ev.push(['stick',s.x,s.y]); return; }
+     if(c.ny<-.6&&s.gs>0){ s.vx=(o.vx||0); s.vy=(o.vy||0); s.ground=o; if(main) this.settle(s,''); else s.st='dead'; return; }
+     s.vx-=vn*c.nx; s.vy-=vn*c.ny; continue; }
     if(c.ny<-.6&&imp>SPLAT_V*ch.splat&&main&&s.gs>0){ s.vx=0; s.vy=0; s.st='splat'; s.at=0; s.ground=o; this.ev.push(['splat',s.x,s.y,imp]); return; }
-    const rest=imp<90*K?0:(this.mod&&this.mod.sticky?.04:ch.rest); s.vx-=(1+rest)*vn*c.nx; s.vy-=(1+rest)*vn*c.ny;
+    const rest=imp<90*K?0:ch.rest; s.vx-=(1+rest)*vn*c.nx; s.vy-=(1+rest)*vn*c.ny;
     if(imp>70*K) this.ev.push(['bounce',s.x,s.y,imp,c.nx,c.ny,o]); }
    if(c.ny<-.6) grounded=o; }
   // границы
-  if(s.x<R){s.x=R; if(s.vx<0){ if(this.has('wall')&&main){ this.settle(s,'wall'); s.wall=true; this.ev.push(['stick',s.x,s.y]); return; } if(-s.vx>70)this.ev.push(['bounce',s.x,s.y,-s.vx,1,0,'L']); s.vx=-s.vx*ch.rest;}}
-  if(s.x>LW-R){s.x=LW-R; if(s.vx>0){ if(this.has('wall')&&main){ this.settle(s,'wall'); s.wall=true; this.ev.push(['stick',s.x,s.y]); return; } if(s.vx>70)this.ev.push(['bounce',s.x,s.y,s.vx,-1,0,'R']); s.vx=-s.vx*ch.rest;}}
-  if(s.y<R){s.y=R; if(s.vy<0){ s.vy=-s.vy*ch.rest; if(s.gs<0) s.gs=1; this.ev.push(['bounce',s.x,s.y,60,0,1,'T']);}}
-  if(s.y>LH-R){s.y=LH-R; if(s.vy>0){ s.vy=-s.vy*ch.rest;} grounded=grounded||{x:0,y:LH,w:LW,h:1};}
+  const stk=this.mod&&this.mod.sticky;
+  if(s.x<R){s.x=R; if(s.vx<0){ if((this.has('wall')||stk&&-s.vx>40*K)&&main){ if(stk) this.ev.push(['goo',0,s.y,-s.vx,1,0]); this.settle(s,'wall'); s.wall=true; this.ev.push(['stick',s.x,s.y]); return; } if(-s.vx>70)this.ev.push(['bounce',s.x,s.y,-s.vx,1,0,'L']); s.vx=stk?0:-s.vx*ch.rest;}}
+  if(s.x>LW-R){s.x=LW-R; if(s.vx>0){ if((this.has('wall')||stk&&s.vx>40*K)&&main){ if(stk) this.ev.push(['goo',LW,s.y,s.vx,-1,0]); this.settle(s,'wall'); s.wall=true; this.ev.push(['stick',s.x,s.y]); return; } if(s.vx>70)this.ev.push(['bounce',s.x,s.y,s.vx,-1,0,'R']); s.vx=stk?0:-s.vx*ch.rest;}}
+  if(s.y<R){s.y=R; if(s.vy<0){ if(stk){ if(-s.vy>40*K) this.ev.push(['goo',s.x,0,-s.vy,0,1]); s.vy=0; } else { s.vy=-s.vy*ch.rest; this.ev.push(['bounce',s.x,s.y,60,0,1,'T']); } if(s.gs<0) s.gs=1; }}
+  if(s.y>LH-R){s.y=LH-R; if(s.vy>0){ if(stk){ if(s.vy>40*K) this.ev.push(['goo',s.x,LH,s.vy,0,-1]); s.vy=0; if(s.gs>0){ s.vx=0; if(main) this.settle(s,''); else s.st='dead'; return; } } else s.vy=-s.vy*ch.rest;} grounded=grounded||{x:0,y:LH,w:LW,h:1};}
   for(const b of this.bumpers){ const dx=s.x-b.x, dy=s.y-b.y, d=Math.hypot(dx,dy); if(d<b.r+R&&d>0){ const nx=dx/d, ny=dy/d; s.x=b.x+nx*(b.r+R); s.y=b.y+ny*(b.r+R); const vn=s.vx*nx+s.vy*ny; if(vn<0){s.vx-=2*vn*nx; s.vy-=2*vn*ny;}
    s.bumpN++; if(s.bumpN<=6){ s.vx+=nx*140*K; s.vy+=ny*140*K; const sp=Math.hypot(s.vx,s.vy); if(sp<360*K){s.vx*=360*K/sp;s.vy*=360*K/sp;} } else { s.vx*=.7; s.vy*=.7; }
    b.hit=.25; this.ev.push(['bumper',b.x,b.y,b]); } }
   if(s.pcd<=0) for(const p of this.portals){ for(let k=0;k<2;k++){ const ax=p[k*2],ay=p[k*2+1]; if(Math.hypot(s.x-ax,s.y-ay)<13){ const bx=p[2-k*2],by=p[3-k*2]; this.ev.push(['portal',ax,ay,bx,by]); s.x=bx; s.y=by; s.pcd=.6; break; } } }
-  for(const c of this.candies) if(!c.got&&Math.hypot(s.x-c.x,s.y-c.y)<MAG.PICK) this.pickCandy(c,c.cap);
-  if(this.gem&&!this.gem.got&&Math.hypot(s.x-this.gem.x,s.y-this.gem.y)<17){ this.gem.got=true; this.ev.push(['gem',this.gem.x,this.gem.y]); }
-  const g0=this.L.goal; if(Math.abs(s.x-g0[0])<14&&s.y>g0[1]-36&&s.y<g0[1]+2){ if(!main){ this.s.x=s.x; this.s.y=s.y; this.s.vx=this.s.vy=0; this.clone=null; } const m=this.s; m.st='win'; m.at=0; m.vx=m.vy=0; this.result='win'; this.ev.push(['win']); return; }
+  for(const c of this.candies) if(!c.got&&Math.hypot(s.x-c.x,s.y-c.y)<MAG.PICK*HK) this.pickCandy(c,c.cap);
+  if(this.gem&&!this.gem.got&&Math.hypot(s.x-this.gem.x,s.y-this.gem.y)<17*HK){ this.gem.got=true; this.ev.push(['gem',this.gem.x,this.gem.y]); }
+  const g0=this.L.goal; if(Math.abs(s.x-g0[0])<14*HK&&s.y>g0[1]-36&&s.y<g0[1]+2){ if(!main){ this.s.x=s.x; this.s.y=s.y; this.s.vx=this.s.vy=0; this.clone=null; } const m=this.s; m.st='win'; m.at=0; m.vx=m.vy=0; this.result='win'; this.ev.push(['win']); return; }
   // отдых
   if(s.zone){ const zn=s.zone; const slow=Math.abs(s.vy)<6*K&&Math.abs(s.vx)<10*K; s.stillT=slow?(s.stillT||0)+dt:0; if((Math.abs(s.y-zn.ty)<1&&slow)||s.stillT>.35||s.zoneT>6){ if(main){ if(Math.abs(zn.ty-s.y)<1) s.y=zn.ty; this.settle(s,zn.k==='water'?'water':'hover'); } else s.st='dead'; return; } }
   else if(wat&&!this.has('sponge')&&Math.hypot(s.vx,s.vy)<35*K&&s.fly>.4){ if(main) this.settle(s,'water'); else s.st='dead'; return; }
-  if(grounded){ s.ground=grounded; const fr=(grounded.type==='i'||this.wxNow==='ice')?.08:(this.mod&&this.mod.sticky?3:ch.fric*(this.wxNow==='rain'?.3:1)); const gvx=(grounded.vx||0)+(grounded.type==='v'?grounded.arg*38*K:0); s.vx=gvx+(s.vx-gvx)*(grounded.mover?Math.pow(1e-4,dt):Math.pow(.25*(1/Math.max(.2,fr)),dt*fr)); const rvx=s.vx-gvx;
+  if(grounded){ s.ground=grounded; const fr=this.mod&&this.mod.sticky?4:(grounded.type==='i'||this.wxNow==='ice')?.08:ch.fric*(this.wxNow==='rain'?.3:1); const gvx=(grounded.vx||0)+(grounded.type==='v'?grounded.arg*38*K:0); s.vx=gvx+(s.vx-gvx)*(grounded.mover?Math.pow(1e-4,dt):Math.pow(.25*(1/Math.max(.2,fr)),dt*fr)); const rvx=s.vx-gvx;
    if(Math.abs(rvx)<26*K&&Math.abs(s.vy-(grounded.vy||0))<40*K){ if(main) this.settle(s,''); else s.st='dead'; return; } }
   // анти-залипание: нет прогресса
   s.histT+=dt; if(s.histT>.25){ s.histT=0; s.hist.push([s.x,s.y]); if(s.hist.length>12) s.hist.shift();
@@ -528,6 +533,7 @@ class World{
  bossHit(b,sp){ if(b.cd>0) return; b.cd=.6; b.react=.6; b.hp--; this.ev.push(['bhit',b.x,b.y,b.hp,b.k]); if(b.hp<=0){ b.dead=true; this.ev.push(['bdown',b.x,b.y,b.k]); } }
  eatTick(s,dt){ const b=this.boss; s.eat-=dt; if(b){ s.x=b.x; s.y=b.y; } if(s.eat<=0){ s.eat=0; s.vy=-520*K; s.vx=(s.x<LW/2?1:-1)*120*K; s.y-=(b?b.r:0)+R+2; s.hist=[]; s.histT=0; if(b) b.cd=1.2; this.ev.push(['spit',s.x,s.y]); } }
  // полная симуляция для диско-прицела и солвера
+ windSum(){ const w=(this.mod&&this.mod.wind||0)+(this.wind||0); return this.mod&&this.mod.wind?Math.max(-300,Math.min(300,w)):w; }
  snapshot(){ const w=new World(this.li,this.ch,this.L); w.mod=this.mod; w.t=this.t; w.updMovers(0);
   this.solids.forEach((o,i)=>{w.solids[i].alive=o.alive}); this.buttons.forEach((b,i)=>{w.buttons[i].on=b.on}); this.candies.forEach((c,i)=>{ const tr=w.candies[i].tr; Object.assign(w.candies[i],c); w.candies[i].tr=tr; w.candies[i].trN=0; }); if(this.gem) w.gem={...this.gem};
   Object.assign(w.s,JSON.parse(JSON.stringify({...this.s,ground:null}))); w.s.ground=null; w.shots=this.shots; w.got=this.got; w.shield=this.shield; w.tilt=this.tilt; if(this.boss) w.boss=JSON.parse(JSON.stringify(this.boss)); if(this.wx) w.wx={...this.wx}; w.wxNow=this.wxNow; return w; }
@@ -908,7 +914,7 @@ function drawFuse(){ drawBG(4,0,now); swipePager=null; const tp=TAP(); iconBtn(4
   btn(W/2-90,Math.min(H-tp-8,y0+ph+6),180,tp,known?'ВЫБРАТЬ':'СЛИТЬ!',()=>{ const a=fusePick[0],b=fusePick[1]; fusePick=[]; selectHybrid(a,b); if(hybDiscover(a,b)){ qEv('fuse'); sfx('secret'); haptic('success'); showReveal('hyb',fusedChar(a,b)); } else { sfx('tap'); scene='levels'; } },'#4ed05a',14); buttons[buttons.length-1].label='fusego'; }
  for(const f of floats){ const k=f.t/f.life; T(f.s,f.x+ox,f.y+oy-k*14,f.size,f.col); } }
 function startLevel(i){ idleT=0; bossLbl=null; impStage=0; bubble=null; if(fusion&&!chaosRun) fusion.level=i; curLevel=i; if(relayTeam&&!chaosRun){ relay={i:0,sw:0}; } else relay=null; world=new World(i,PC()); if(nastya) world.inf=true; if(relay) world.shots+=1;
- if(!chaosRun&&!relay&&!nastya){ const ch0=PC(); if(!ch0.fuse&&save.house&&save.house[ch0.id]){ const h=houseOf(ch0.id); let n=fedSess.has(ch0.id)?fedSess.get(ch0.id):fedN(h.full); if(n>0){ world.shots+=n; world.fedBonus=n; if(!fedSess.has(ch0.id)){ fedSess.set(ch0.id,n); save.fedUsed=[...fedSess]; store(); } } } } wxP=[]; wxPrev=''; if(chaosRun){ world.shots+=2; world.mod=chaosRun.mod; world.comboMul=1.5; } const ti=themeOf(i); lvlCanvas=buildLevelCanvas(LV[i],ti); if(world.boss) bossLbl={t0:now,w:world}; parts=[];decals=[];floats=[];overlay=null;drag=null;sAnim={a:'idle',t:0};
+ if(!chaosRun&&!relay&&!nastya){ const ch0=PC(); if(!ch0.fuse&&save.house&&save.house[ch0.id]){ const h=houseOf(ch0.id); let n=fedSess.has(ch0.id)?fedSess.get(ch0.id):fedN(h.full); if(n>0){ world.shots+=n; world.fedBonus=n; if(!fedSess.has(ch0.id)){ fedSess.set(ch0.id,n); save.fedUsed=[...fedSess]; store(); } } } } wxP=[]; wxPrev=''; if(chaosRun){ world.shots+=2; const c=chaosRun; if(!c.mod||!chaosModOK(c.mod,world.L)){ c.mod=chaosPick(c.mod,world.L); c.fx=0; } if(!c.next||!chaosModOK(c.next,world.L)) c.next=chaosPick(c.mod,world.L); world.mod=c.mod; world.comboMul=1.5; } const ti=themeOf(i); lvlCanvas=buildLevelCanvas(LV[i],ti); if(world.boss) bossLbl={t0:now,w:world}; parts=[];decals=[];floats=[];overlay=null;drag=null;sAnim={a:'idle',t:0};
  scene='play'; tgBack(true); floats.push({s:LV[i].hint,x:LW/2,y:150,t:0,life:2.6,size:11,col:'#fff'}); if(world.fedBonus) floats.push({s:'Сытый: +'+world.fedBonus+' '+brosk(world.fedBonus)+' — до выхода в меню',x:LW/2,y:128,t:0,life:2.4,size:12,col:['#fff','#7affe0'],pop:1}); if(nastya) floats.push({s:'Режим Насти: ♥ ∞',x:LW/2,y:106,t:0,life:2.4,size:13,col:['#ffd0ea','#ff4a8a'],pop:1});
  /* FB17: представление босса — табличка над самим боссом (drawBossLabel) */
  if(world.wx){ const nm=WXN[world.wxNow]; floats.push({s:'Погода: '+nm[0],x:LW/2,y:world.boss?236:190,t:0,life:2.4,size:12,col:nm[1]}); }
@@ -964,6 +970,8 @@ function handleEvents(){ const ch=PC(); for(const e of world.ev){ const [k,x,y]=
  if(k==='melt'){ sfx('splat'); burst(x,y,24,['#8ad0ff','#fff','#c8ecff'],110,30,.7); floats.push({s:'ТАЕТ!',x,y:y-14,t:0,life:.8,size:10,col:'#c8ecff'}); }
  if(k==='crate'){ sfx('splat'); shake=Math.max(shake,3); haptic('medium'); burst(x,y,26,['#b8783c','#8a5428','#d89a58','#2a1408'],170,80,.8,400); floats.push({s:'ХРЯСЬ!',x,y:y-14,t:0,life:.8,size:11,col:'#ffd23c'}); }
  if(k==='juicy'){ floats.push({s:'+1 бросок',x,y:y-28,t:0,life:.9,size:9,col:'#ff6070'}); }
+ if(k==='goo'){ sfx('bounce',Math.min(160,e[3]*.3)); { const n0=parts.length; burst(x,y,8+(e[3]/120|0),['#c8e040','#c8e040','#8ab020'],Math.min(140,e[3]*.25),0,.55); for(let i=n0;i<parts.length;i++){ parts[i].s=3+(Math.random()*2|0); parts[i].o=1; } } for(let i=0;i<4;i++) decals.push({x:Math.round(x+(Math.random()*24-12)),y:Math.round(Math.max(2,Math.min(LH-1,y+(e[5]<-.6?0:Math.random()*12-6)))),w:5+(Math.random()*5|0),h:3+(Math.random()*2|0),c:'#c8e040',hl:1}); }
+ if(k==='rest'&&world.mod&&world.mod.id==='heavy'){ shake=Math.max(shake,1)+1; }
  if(k==='stick'){ grafAdd(curLevel,x+(x<LW/2?-R+2:R-2),y,ch.col,x<LW/2?1:2); sfx('bounce',100); burst(x,y,8,[ch.col,'#fff'],60,0,.3,0); sAnim={a:'idle',t:0}; }
  } world.ev.length=0; }
 
@@ -996,7 +1004,7 @@ function drawPlay(){ const s=world.s, ti=themeOf(curLevel), th=THEMES[ti], ch=PC
  ctx.fillStyle='rgba(0,0,0,.25)'; ctx.fillRect(-3,-3,LW+6,LH+6); ctx.fillStyle=th.out; ctx.fillRect(-2,-2,LW+4,2); ctx.fillRect(-2,LH,LW+4,2); ctx.fillRect(-2,0,2,LH); ctx.fillRect(LW,0,2,LH);
  ctx.fillStyle=th.ui; ctx.globalAlpha=.5; ctx.fillRect(-1,-1,LW+2,1); ctx.globalAlpha=1;
  ctx.fillStyle='rgba(8,2,20,.18)'; ctx.fillRect(0,0,LW,LH); ctx.drawImage(lvlCanvas,0,0); { const gc=grafCanvas(curLevel); if(gc){ ctx.globalAlpha=overlay&&overlay.k==='grafview'?1:.85; ctx.drawImage(gc,0,0); ctx.globalAlpha=1; } }
- for(const d of decals){ ctx.fillStyle='#1a0c22'; ctx.fillRect(d.x-1,d.y-1,d.w+2,3); ctx.fillStyle=d.c; ctx.fillRect(d.x,d.y-1,d.w,2); }
+ for(const d of decals){ const h=d.h||2; ctx.fillStyle='#1a0c22'; ctx.fillRect(d.x-1,d.y-1,d.w+2,h+1); ctx.fillStyle=d.c; ctx.fillRect(d.x,d.y-1,d.w,h); if(d.hl){ ctx.fillStyle='#f0ffa0'; ctx.fillRect(d.x+1,d.y-1,1,1); } }
  for(const w of world.water) drawWater(w,now); for(const f of world.fans) drawFan(f,now);
  for(const o of world.solids){ if(!o.alive) continue; if(o.type==='c') drawCrate(o); else if(o.type==='i') drawIce(o); else if(o.type==='d') drawDoor(o); else if(o.type==='v') drawConv(o,now); else if(o.type==='b'&&o.hit>0){ ctx.fillStyle='#fff'; ctx.globalAlpha=o.hit*2; ctx.fillRect(o.x,o.y-1,o.w,2); ctx.globalAlpha=1; } }
  for(const o of world.solids) if(o.alive&&o.type==='h'&&o.arg!=='shell'){ drawSecretDoor(o,now,(world.L.sec||{}).style); { const zx=Math.round(o.x+o.w/2+2), zy=Math.round(o.y-6-((now*8)%10)); ctx.globalAlpha=.85-((now*8)%10)/14; ctx.fillStyle='#c8f0ff'; ctx.fillRect(zx,zy,4,1); ctx.fillRect(zx+2,zy+1,1,1); ctx.fillRect(zx+1,zy+2,1,1); ctx.fillRect(zx,zy+3,4,1); const z2=Math.round(o.y-10-((now*8+5)%10)); ctx.globalAlpha=.85-((now*8+5)%10)/14; ctx.fillRect(zx+6,z2,3,1); ctx.fillRect(zx+7,z2+1,1,1); ctx.fillRect(zx+6,z2+2,3,1); ctx.globalAlpha=1; } }
@@ -1011,9 +1019,9 @@ function drawPlay(){ const s=world.s, ti=themeOf(curLevel), th=THEMES[ti], ch=PC
  // траектория
  if(drag&&s.st==='idle'){ let dx=drag.cx-drag.x0, dy=drag.cy-drag.y0; const l=Math.hypot(dx,dy); if(l>8){
    const pts=[]; if(world.has('preview')){ const key=(dx|0)+','+(dy|0); if(!drawPlay.pc||drawPlay.pc.k!==key){ const pp=world.previewPath(dx,dy).pts; drawPlay.pc={k:key,pp}; } pts.push(...drawPlay.pc.pp.filter((_,i)=>i%2===0)); }
-   else { const k=Math.min(l,MAXDRAG)/l, v=560*K*ch.power/MAXDRAG; const iv=world.mod&&world.mod.inv?-1:1; let vx=-dx*k*v*iv, vy=-dy*k*v*iv, px=s.x, py=s.y; const gg=G0*ch.grav*(world.has('glide')?.5:1)*(world.mod&&world.mod.g||1);
+   else { const k=Math.min(l,MAXDRAG)/l, v=560*K*ch.power*(world.mod&&world.mod.pw||1)/MAXDRAG; const iv=world.mod&&world.mod.inv?-1:1; let vx=-dx*k*v*iv, vy=-dy*k*v*iv, px=s.x, py=s.y; const gg=G0*ch.grav*(world.has('glide')?.5:1)*(world.mod&&world.mod.g||1);
     for(let i=0;i<60;i++){ vy+=gg/60; px+=vx/60; py+=vy/60; if(px<0||px>LW||py>LH||py<0) break; let hit=false; for(const o of world.solids) if(o.alive&&px>o.x&&px<o.x+o.w&&py>o.y&&py<o.y+o.h) hit=true; if(hit)break; if(i%3===1) pts.push([px,py]); } }
-   const dk=aimDark(); const cL=dk?mixHex(ch.col,'#ffffff',.45):ch.col; aimPts=dk?{pts,cL}:null; if(!dk) pts.forEach(([px,py],i)=>{ const a=1-i/pts.length, z=i<8?3:2; if(dk){ ctx.globalAlpha=Math.max(.12,a*.26); ctx.fillStyle='#fff2c8'; ctx.fillRect((px|0)-2,(py|0)-2,z+4,z+4); } ctx.globalAlpha=Math.max(dk?.6:.35,a); ctx.fillStyle='#1a0c22'; ctx.fillRect((px|0)-1,(py|0)-1,z+2,z+2); ctx.fillStyle=i%2?cL:'#fff'; ctx.fillRect(px|0,py|0,z,z); ctx.globalAlpha=1; }); } }
+   const dk=aimDark(); const cL=world.mod&&world.mod.id==='moon'?'#9ad8ff':dk?mixHex(ch.col,'#ffffff',.45):ch.col; if(chaosRun&&chaosRun.blink>0&&(now*16|0)%2) pts.length=0; aimPts=dk?{pts,cL}:null; if(!dk) pts.forEach(([px,py],i)=>{ const a=1-i/pts.length, z=i<8?3:2; if(dk){ ctx.globalAlpha=Math.max(.12,a*.26); ctx.fillStyle='#fff2c8'; ctx.fillRect((px|0)-2,(py|0)-2,z+4,z+4); } ctx.globalAlpha=Math.max(dk?.6:.35,a); ctx.fillStyle='#1a0c22'; ctx.fillRect((px|0)-1,(py|0)-1,z+2,z+2); ctx.fillStyle=i%2?cL:'#fff'; ctx.fillRect(px|0,py|0,z,z); ctx.globalAlpha=1; }); } }
  // слизень
  if(s.st!=='poof'){ let a=sAnim.a, f=frameOf(a,sAnim.t), flip=false, scx=(world.mod&&world.mod.size)||1, scy=scx, dx=s.x+impJitter(), dy=s.y-3; if(impStage===3&&a==='idle'){ scy=1-.06*Math.abs(Math.sin(now*9)); scx=2-scy; }
   if(drag&&s.st==='idle'){ const ddx=drag.cx-drag.x0, ddy=drag.cy-drag.y0, l=Math.min(1,Math.hypot(ddx,ddy)/MAXDRAG); a='pull'; f=Math.round(l*7); flip=ddx>0; }
@@ -1029,8 +1037,8 @@ function drawPlay(){ const s=world.s, ti=themeOf(curLevel), th=THEMES[ti], ch=PC
   if(s.hover&&s.st==='idle'&&world.shots>0){ T('тяни!',s.x,s.y-46+Math.sin(now*6)*2,9,'#fff'); }
   if(s.wall&&s.st==='idle'){ ctx.fillStyle=ch.col; ctx.fillRect(s.x-1|0,s.y+8|0,3,4); } }
  if(world.clone){ const c=world.clone; drawSlugC(ch.id,'fly',frameOf('fly',now+.2),c.x,c.y-3,c.vx<0); }
- for(const p of parts) if(!p.trail){ ctx.fillStyle=p.c; ctx.fillRect(p.x|0,p.y|0,p.s,p.s); }
- drawWeather(); drawNight(); if(aimPts&&drag){ const {pts,cL}=aimPts; pts.forEach(([px,py],i)=>{ const a=1-i/pts.length, z=i<8?3:2; ctx.globalAlpha=Math.max(.14,a*.34); ctx.fillStyle='#fff2c8'; ctx.fillRect((px|0)-2,(py|0)-2,z+4,z+4); ctx.globalAlpha=Math.max(.75,a); ctx.fillStyle='#1a0c22'; ctx.fillRect((px|0)-1,(py|0)-1,z+2,z+2); ctx.fillStyle=i%2?cL:'#fff'; ctx.fillRect(px|0,py|0,z,z); ctx.globalAlpha=1; }); } aimPts=null; { let cy=4; if(chaosRun&&oy+LH+4>H-30) cy=34; drawWxChip(cy); relayHud(cy); const by2=(world.wx||relay)?cy+28:cy;
+ for(const p of parts) if(!p.trail){ if(p.o){ ctx.fillStyle='#1a0c22'; ctx.fillRect((p.x|0)-1,(p.y|0)-1,p.s+2,p.s+2); } ctx.fillStyle=p.c; ctx.fillRect(p.x|0,p.y|0,p.s,p.s); }
+ chaosFXDraw(); drawWeather(); drawNight(); if(aimPts&&drag){ const {pts,cL}=aimPts; pts.forEach(([px,py],i)=>{ const a=1-i/pts.length, z=i<8?3:2; ctx.globalAlpha=Math.max(.14,a*.34); ctx.fillStyle='#fff2c8'; ctx.fillRect((px|0)-2,(py|0)-2,z+4,z+4); ctx.globalAlpha=Math.max(.75,a); ctx.fillStyle='#1a0c22'; ctx.fillRect((px|0)-1,(py|0)-1,z+2,z+2); ctx.fillStyle=i%2?cL:'#fff'; ctx.fillRect(px|0,py|0,z,z); ctx.globalAlpha=1; }); } aimPts=null; { let cy=4; if(chaosRun&&oy+LH+4>H-30) cy=CHAOS_HB+2; drawWxChip(cy); relayHud(cy); const by2=(world.wx||relay)?cy+28:cy;
   if(world.boss&&!world.boss.dead&&!world.result){ const B=BOSS[world.boss.k]; ctx.fillStyle='rgba(12,4,24,.55)'; ctx.fillRect(4,by2,LW-8,22); T('БОСС: '+B.name,10,by2+3,11,'#ffb03c','l'); for(let i=0;i<3;i++){ const hx=LW-40+i*11, on=i<world.boss.hp; ctx.fillStyle='#1a0c22'; ctx.fillRect(hx-1,by2+6,9,8); ctx.fillStyle=on?'#ff4a6a':'#4a3a5a'; ctx.fillRect(hx,by2+7,3,2); ctx.fillRect(hx+4,by2+7,3,2); ctx.fillRect(hx,by2+9,7,2); ctx.fillRect(hx+1,by2+11,5,1); ctx.fillRect(hx+2,by2+12,3,1); } }
   if(mic.on){ ctx.fillStyle='#1a0c22'; ctx.fillRect(LW-10,LH-60,6,52); ctx.fillStyle=mic.lvl>.16?'#ff3a3a':'#4ed05a'; const mh=Math.min(50,Math.round(mic.lvl*300)); ctx.fillRect(LW-9,LH-9-mh,4,mh); } }
  drawBossLabel();
@@ -1186,34 +1194,68 @@ function render(){ buttons=[]; ctx.setTransform(1,0,0,1,0,0); ctx.globalAlpha=1;
 
 let chaosRun=null; let chaosNext=function(){}, chaosAfterFail=function(){}, chaosWin=function(){};
 // ---------- B10: ХАОС-РЕЖИМ ----------
-const CHAOS_STARS=15, CHAOS_T=10, CHAOS_WARN=3;
+const CHAOS_STARS=15, CHAOS_T=10, CHAOS_WARN=3, CHAOS_HB=46;
+/* Ф0х: пиксельные иконки 8×8 (рисуются ×2 = 16×16), 1 — цвет эффекта, 2 — белый */
+const CHAOS_ICO={moon:['..111...','.11.....','11......','11......','11......','.11...2.','..111...','........'],
+ heavy:['...11...','..1..1..','.111111.','11111111','11122111','11111111','.111111.','........'],
+ windl:['........','..1.....','.1......','11111111','.1......','..1.222.','........','..2222..'],
+ windr:['........','.....1..','......1.','11111111','......1.','.222.1..','........','..2222..'],
+ mega:['...22...','..2..2..','........','.111111.','11111111','.1....1.','.1....1.','........'],
+ sticky:['.111111.','11111111','11211211','.1.11.1.','.1..1.1.','.1....1.','......1.','........'],
+ slow:['.111111.','.1....1.','..1221..','...11...','...11...','..1..1..','.122221.','.111111.'],
+ turbo:['....11..','...11...','..11....','.111111.','....11..','...11...','..11....','.11.....'],
+ mirror:['...22...','.1.22.1.','11.22.11','11122111','11.22.11','.1.22.1.','...22...','........'],
+ giant:['.11..11.','1......1','1......1','...22...','...22...','1......1','1......1','.11..11.'],
+ tiny:['........','.1....1.','..1..1..','...22...','...22...','..1..1..','.1....1.','........']};
+function chaosIcon(id,x,y,col){ const P=CHAOS_ICO[id]; if(!P) return; x=Math.round(x); y=Math.round(y); ctx.fillStyle='#1a0c22'; for(let j=0;j<8;j++) for(let i=0;i<8;i++) if(P[j][i]!=='.') ctx.fillRect(x+i*2-1,y+j*2-1,4,4);
+ for(let j=0;j<8;j++) for(let i=0;i<8;i++){ const c=P[j][i]; if(c==='.') continue; ctx.fillStyle=c==='2'?'#fff':col; ctx.fillRect(x+i*2,y+j*2,2,2); } }
 const MODS=[
- {id:'moon',name:'ЛУНА',sub:'гравитация ×0.45',col:'#e8f0ff',g:.45},
- {id:'heavy',name:'ТЯЖЕСТЬ',sub:'гравитация ×1.6',col:'#ff9a5c',g:1.6},
- {id:'windl',name:'ВЕТЕР ←',sub:'сдувает влево',col:'#8ad8ff',wind:-260},
- {id:'windr',name:'ВЕТЕР →',sub:'сдувает вправо',col:'#8ad8ff',wind:260},
+ {id:'moon',name:'ЛУНА',sub:'гравитация ×0.45',col:'#e8f0ff',g:.45,vcap:.7},
+ {id:'heavy',name:'ТЯЖЕСТЬ',sub:'гравитация ×1.6',col:'#ff9a5c',g:1.6,pw:1.1},
+ {id:'windl',name:'ВЕТЕР ←',sub:'сдувает влево',col:'#8ad8ff',wind:-220},
+ {id:'windr',name:'ВЕТЕР →',sub:'сдувает вправо',col:'#8ad8ff',wind:220},
  {id:'mega',name:'МЕГА-БАТУТ',sub:'батуты ×1.5',col:'#ff5aa8',pad:1.5},
  {id:'sticky',name:'ЛИПУЧКА',sub:'никаких отскоков',col:'#c8e040',sticky:1},
  {id:'slow',name:'СЛОУ-МО',sub:'время ×0.55',col:'#62acff',ts:.55},
  {id:'turbo',name:'ТУРБО',sub:'время ×1.5',col:'#ff3a3a',ts:1.5},
  {id:'mirror',name:'ЗЕРКАЛО',sub:'рогатка наоборот',col:'#d0b0ff',inv:1},
- {id:'giant',name:'ВЕЛИКАН',sub:'только вид, не хитбокс',col:'#ffd23c',size:1.6},
- {id:'tiny',name:'КРОШКА',sub:'только вид, не хитбокс',col:'#7affe0',size:.6}];
-function chaosPick(not){ const pool=MODS.filter(m=>!not||m.id!==not.id&&!(m.size&&not.size)); return pool[Math.random()*pool.length|0]; }
-function chaosStart(){ chaosRun={lives:3,score:0,n:0,t:0,nextAt:CHAOS_T,mod:null,next:chaosPick(null),last:-1,best:0}; chaosRun.fus=fusion; fusion=null; chaosNext(); }
+ {id:'giant',name:'ВЕЛИКАН',sub:'слизень ×1.35',col:'#ffd23c',size:1.35,hit:1.35},
+ {id:'tiny',name:'КРОШКА',sub:'пролезет в щель',col:'#7affe0',size:.7,hit:.7}];
+/* Ф0х Х-3: эффект не выпадает, если на уровне он бессмыслен (26.11.7 п.1) */
+const chaosNarrowC={};
+function chaosNarrow(L){ const k=L.name+'|'+(L.p||[]).length; if(k in chaosNarrowC) return chaosNarrowC[k]; const P=(L.p||[]).filter(o=>o[4]!=='s'&&o[4]!=='o'); let nar=false;
+ for(let i=0;i<P.length&&!nar;i++) for(let j=0;j<P.length;j++){ if(i===j) continue; const a=P[i],b=P[j];
+  const gx=b[0]-(a[0]+a[2]), oy=Math.min(a[1]+a[3],b[1]+b[3])-Math.max(a[1],b[1]); if(gx>=2*RB&&gx<40&&oy>8){ nar=true; break; }
+  const gy=b[1]-(a[1]+a[3]), ox=Math.min(a[0]+a[2],b[0]+b[2])-Math.max(a[0],b[0]); if(gy>=2*RB&&gy<40&&ox>8){ nar=true; break; } }
+ return chaosNarrowC[k]=nar; }
+function chaosModOK(m,L){ if(!m||!L) return true; if(m.pad&&!(L.p||[]).some(o=>o[4]==='b')) return false; if(m.wind&&L.boss&&L.boss.k===8) return false; if(m.hit>1&&chaosNarrow(L)) return false; return true; }
+function chaosPick(not,L){ let pool=MODS.filter(m=>(!not||m.id!==not.id&&!(m.size&&not.size))&&chaosModOK(m,L)); if(!pool.length) pool=MODS.filter(m=>!not||m.id!==not.id); return pool[Math.random()*pool.length|0]; }
+function chaosStart(){ chaosRun={lives:3,score:0,n:0,t:0,nextAt:CHAOS_T,mod:null,next:null,last:-1,best:0,fx:0,dly:0}; chaosRun.fus=fusion; fusion=null; chaosNext(); }
 function chaosLevel(){ const pool=[]; for(let i=0;i<LV.length;i++) if((save.stars[i]||0)>0) pool.push(i); const P=pool.length>=5?pool:Array.from({length:30},(_,i)=>i); let li; do{ li=P[Math.random()*P.length|0]; }while(P.length>1&&li===chaosRun.last); return li; }
 chaosNext=function(){ if(!chaosRun) return; const li=chaosLevel(); chaosRun.last=li; startLevel(li); };
 chaosWin=function(sc,lines){ const add=Math.round(sc*1.5); chaosRun.score+=add; chaosRun.n++; lines.push(['+'+add+' (×1.5)','#fff6b0',14]); lines.push(['Забег: '+chaosRun.score+' • уровней '+chaosRun.n,'#ffb0ff',11]); };
 chaosAfterFail=function(){ if(!chaosRun) return; if(overlay&&overlay.over){ chaosEnd(); return; } chaosNext(); };
 function chaosEnd(){ const r=chaosRun; chaosRun=null; if(r&&r.fus) fusion=r.fus; if(!save.chaos||typeof save.chaos!=='object') save.chaos={best:0,runs:0,lvls:0}; save.chaos.runs++; const rec=r.score>save.chaos.best; if(rec) save.chaos.best=r.score; save.chaos.lvls=Math.max(save.chaos.lvls||0,r.n); store();
  overlay=null; scene='menu'; tgBack(false); floats.push({s:(rec?'РЕКОРД ХАОСА! ':'Хаос: ')+r.score,x:W/2-ox,y:H*.33-oy,t:0,life:3,size:16,col:['#fff','#ff5aff'],pop:1}); }
-function chaosTick(dt){ const c=chaosRun; c.t+=dt; if(c.t>=c.nextAt){ c.mod=c.next; c.next=chaosPick(c.mod); c.nextAt+=CHAOS_T; if(world){ world.mod=c.mod; } sfx('combo',4); haptic('medium'); shake=Math.max(shake,3); flash=.08; floats.push({s:c.mod.name+'!',x:LW/2,y:220,t:0,life:1.3,size:20,col:['#fff',c.mod.col],pop:1}); }
+let chaosStat={hud:'',fx:'',n:0}, chaosP=[], chaosLastT=0;
+function chaosFXDraw(){ chaosStat.fx=''; chaosStat.n=0; if(!chaosRun||!world||!world.mod) return; const m=world.mod, s=world.s, c=chaosRun; const dt=Math.min(.05,Math.max(0,now-(chaosLastT||now))); chaosLastT=now; const id=m.id; chaosStat.fx=id; const px=(x,y,w,h,col)=>{ ctx.fillStyle=col; ctx.fillRect(Math.round(x),Math.round(y),w,h); };
+ if(id==='moon'){ while(chaosP.length<28) chaosP.push({x:Math.random()*LW,y:Math.random()*LH,v:8+Math.random()*14,p:Math.random()*6}); for(const p of chaosP){ p.y+=p.v*dt; if(p.y>LH){ p.y=-4; p.x=Math.random()*LW; } const tw=(Math.sin(now*3+p.p)>0), x0=Math.round(p.x), y0=Math.round(p.y); px(x0-3,y0-1,7,3,'#1a0c22'); px(x0-1,y0-3,3,7,'#1a0c22'); px(x0-2,y0,5,1,'#e8f0ff'); px(x0,y0-2,1,5,'#e8f0ff'); px(x0,y0,1,1,tw?'#fff':'#ffe066'); } chaosStat.n=chaosP.length; }
+ else chaosP.length=0;
+ if(id==='heavy'&&s.st==='fly'&&s.vy>120*K){ if(Math.random()<.6) parts.push({x:s.x+(Math.random()*16-8),y:s.y-R,vx:0,vy:-30,life:.35,t:0,c:Math.random()<.5?'#c8b8a8':'#8a7a6a',g:0,s:2}); chaosStat.n=1;  chaosStat.dust=(chaosStat.dust|0)+1; } if(id==='heavy'&&chaosStat.dust) chaosStat.n=Math.max(chaosStat.n,1);
+ if(id==='mega'){ const a=.6+.35*Math.sin(now*6), e=2+Math.round(1+Math.sin(now*6)); for(const o of world.solids) if(o.alive&&o.type==='b'){ ctx.globalAlpha=1; px(o.x-e-1,o.y-e-1,o.w+2*e+2,1,'#1a0c22'); ctx.globalAlpha=a; px(o.x-e,o.y-e,o.w+2*e,2,'#ff5aa8'); px(o.x-e,o.y-e,2,o.h+2*e,'#ff5aa8'); px(o.x+o.w+e-2,o.y-e,2,o.h+2*e,'#ff5aa8'); ctx.globalAlpha=a*.5; px(o.x,o.y-e-6,o.w,4,'#ffb0d8'); chaosStat.n++; } ctx.globalAlpha=1; }
+ if(id==='slow'){ ctx.globalAlpha=.12; for(let i=0;i<4;i++){ const b=6+i*6; px(0,0,LW,b,'#62acff'); px(0,LH-b,LW,b,'#62acff'); px(0,b,b,LH-2*b,'#62acff'); px(LW-b,b,b,LH-2*b,'#62acff'); } ctx.globalAlpha=1; chaosStat.n=1; }
+ if(id==='turbo'&&s.st==='fly'){ const v=Math.hypot(s.vx,s.vy); if(v>60){ const ux=s.vx/v, uy=s.vy/v; for(let i=-1;i<=1;i++){ const ox2=-uy*i*7, oy2=ux*i*7; for(let k=0;k<5;k++){ const d=R+6+k*5+(i===0?4:0); ctx.globalAlpha=.75-k*.13; px(s.x-ux*d+ox2-1,s.y-6-uy*d+oy2-1,3,3,k%2?'#ff3a3a':'#ffd23c'); } } ctx.globalAlpha=1; chaosStat.n=3; } }
+ if(id==='mirror'&&s.st==='idle'){ const yy=s.y-R-34, xx=s.x; px(xx-8,yy-1,17,4,'#1a0c22'); px(xx-7,yy,15,2,'#d0b0ff'); px(xx-9,yy-3,4,8,'#1a0c22'); px(xx+6,yy-3,4,8,'#1a0c22'); px(xx-8,yy-2,2,6,'#d0b0ff'); px(xx+7,yy-2,2,6,'#d0b0ff'); chaosStat.n=1; }
+ if((id==='giant'||id==='tiny')&&c.fx<.5&&s.st!=='poof'){ const r=R*m.hit; ctx.globalAlpha=1-c.fx*1.6; for(let a=0;a<64;a++){ const t=a/64*Math.PI*2; px(s.x+Math.cos(t)*r-1,s.y+Math.sin(t)*r-1,2,2,a%4<2?m.col:'#1a0c22'); } ctx.globalAlpha=1; chaosStat.n=1; }
+ if(id==='sticky'&&s.st!=='poof'){ const ph=(now/.3|0); const z=m.size||1; for(let i=0;i<3;i++){ const a=((ph*7+i*5)%11)/11*Math.PI*1.1+Math.PI*1.05; px(s.x+Math.cos(a)*R*.7-1,s.y-4+Math.sin(a)*R*.6,i?1:2,1,i===1?'#c8e040':'#fff'); } chaosStat.n=1; }
+ if(c.blink>0){ c.blink-=dt; } }
+function chaosTick(dt){ const c=chaosRun; c.fx=(c.fx||0)+dt; c.t+=dt*(c.mod&&c.mod.ts||1); /* Х-5: таймер в игровом времени */ if(c.t>=c.nextAt&&drag&&(c.dly||0)<2){ c.dly=(c.dly||0)+dt; return; } /* Х-5: не меняем под пальцем, максимум 2 с */ if(c.t>=c.nextAt){ const was=c.mod; c.dly=0; c.mod=c.next&&chaosModOK(c.next,world&&world.L)?c.next:chaosPick(c.mod,world&&world.L); c.next=chaosPick(c.mod,world&&world.L); c.nextAt=c.t+CHAOS_T; c.fx=0; c.prev=was; c.blink=drag?.5:0; if(world){ world.mod=c.mod; } if(c.mod&&c.mod.wind) noise(.6,.05,2400); sfx('combo',4); haptic('medium'); shake=Math.max(shake,3); flash=.08; floats.push({s:c.mod.name+'!',x:LW/2,y:220,t:0,life:1.3,size:20,col:['#fff',c.mod.col],pop:1}); }
  else if(c.nextAt-c.t<=CHAOS_WARN){ const k=Math.ceil(c.nextAt-c.t); if(k!==c.lastTick){ c.lastTick=k; sfx('tick'); } } }
 drawPlay.hud=(hy,tp)=>{ if(!chaosRun) return; const c=chaosRun; const y=oy+LH+4>H-30?oy+4:oy+LH+6; const inField=y===oy+4;
- if(inField) { ctx.fillStyle='rgba(12,4,24,.6)'; ctx.fillRect(ox,y-2,LW,30); }
- T('ХАОС',ox+6,y,12,['#fff','#ff5aff'],'l'); T('♥'.repeat(c.lives)+'♡'.repeat(Math.max(0,3-c.lives)),ox+52,y,12,'#ff4a6a','l'); T(String(c.score),ox+LW-6,y,12,'#fff6b0','r');
+ if(inField) { ctx.fillStyle='rgba(12,4,24,.6)'; ctx.fillRect(ox,y-2,LW,CHAOS_HB); }
+ T('ХАОС',ox+6,y,12,['#fff','#ff5aff'],'l'); T('♥'.repeat(c.lives)+'♡'.repeat(Math.max(0,3-c.lives)),ox+Math.max(52,6+textW('ХАОС',12)+8),y,12,'#ff4a6a','l'); T(String(c.score),ox+LW-6,y,12,'#fff6b0','r');
  const left=c.nextAt-c.t, frac=Math.max(0,Math.min(1,left/CHAOS_T)); ctx.fillStyle='#1a0c22'; ctx.fillRect(ox+4,y+17,LW-8,6); ctx.fillStyle=left<=CHAOS_WARN?((now*8|0)%2?'#ff3a3a':'#ffd23c'):(c.mod?c.mod.col:'#7a5aff'); ctx.fillRect(ox+5,y+18,Math.round((LW-10)*frac),4);
- if(c.mod) T(c.mod.name+' — '+c.mod.sub,ox+LW/2,y+26,10,c.mod.col);
+ if(c.mod){ let txt=c.mod.name+' — '+c.mod.sub, sz=12; if(textW(txt,sz)+22>LW-8) txt=c.mod.name; const tw=textW(txt,sz); const ix=ox+LW/2-tw/2-11; chaosIcon(c.mod.id,ix,y+25,c.mod.col); T(txt,ix+20,y+27,12,c.mod.col,'l'); chaosStat.hud=c.mod.id; }
  if(left<=CHAOS_WARN&&!overlay){ const k=Math.ceil(left); const p=1+(1-(left%1))*.3; T('через '+k+'… '+c.next.name,ox+LW/2,oy+120,Math.round(15*p),['#fff',c.next.col]); } };
 drawMenu.extra=(my,tp)=>{ const ok=totalStars()>=CHAOS_STARS; btn(W/2-75,my,150,tp,ok?'ХАОС':'ХАОС ★'+CHAOS_STARS,()=>{ if(!ok){ sfx('bounce',40); haptic('error'); floats.push({s:'Хаос откроется на ★'+CHAOS_STARS,x:W/2-ox,y:my-oy-8,t:0,life:1.4,size:11,col:'#ffd23c'}); return; } sfx('win'); chaosStart(); },ok?'#c03ad0':'#4a3a5a',16); buttons[buttons.length-1].label='chaos';
  if(save.chaos&&save.chaos.best) T('рекорд хаоса: '+save.chaos.best,W/2,my+tp+4,10,'#ffb0ff'); return my+tp+(save.chaos&&save.chaos.best?26:12); };
@@ -1339,20 +1381,23 @@ function drawSlugM(id,anim,f,x,y,flip,sx,sy){ drawSlug(id,anim,f,x,y,flip,sx,sy)
 // ---------- 8: погода — визуал ----------
 const WXN={'wind+':['ВЕТЕР →','#8ad8ff'],'wind-':['← ВЕТЕР','#8ad8ff'],rain:['ДОЖДЬ · скользко','#62acff'],ice:['ГОЛОЛЁД','#c8ecff'],clear:['ЯСНО','#ffe066']};
 let wxP=[], wxFade=0, wxPrev='';
-function wxFX(dt){ const w=world.wxNow; if(!world.wx){ wxP=[]; return; } if(w!==wxPrev){ wxPrev=w; wxFade=0; } wxFade=Math.min(1,wxFade+dt*1.5);
- const want=w==='rain'?90:w==='ice'?50:(w==='wind+'||w==='wind-')?34:0; let n=wxP.filter(p=>!p.dead).length; const dir=(world.wind||0)/170;
+/* Ф0х Х-2: ветер Хаоса рисуется той же погодой (листья и штрихи) */
+function wxKind(){ const cw=world.mod&&world.mod.wind; if(!world.wx) return cw?(cw>0?'wind+':'wind-'):''; const w=world.wxNow; if(cw&&(w==='clear'||w==='wind+'||w==='wind-')) return world.windSum()>=0?'wind+':'wind-'; return w; }
+function wxFX(dt){ const w=wxKind(); if(!w){ wxP=[]; return; } if(w!==wxPrev){ wxPrev=w; wxFade=0; } wxFade=Math.min(1,wxFade+dt*1.5);
+ const want=w==='rain'?90:w==='ice'?50:(w==='wind+'||w==='wind-')?(world.wx&&world.mod&&world.mod.wind?48:34):0; let n=wxP.filter(p=>!p.dead).length; const dir=world.windSum()/170;
  while(n<want){ n++; const t=w; wxP.push({k:t==='rain'?'r':t==='ice'?'s':(Math.random()<.25?'l':'w'),x:Math.random()*(LW+80)-40,y:Math.random()*LH*(wxP.length<want?1:0)-10,v:.6+Math.random()*.6,ph:Math.random()*6,c:['#7fd64a','#ffb03c','#e85a3a'][Math.random()*3|0]}); }
  for(const p of wxP){ if(p.k==='r'){ p.y+=520*p.v*dt; p.x+=(dir*120-30)*dt; if(p.y>LH){ if(Math.random()<.4) parts.push({x:p.x,y:LH-2,vx:(Math.random()-.5)*40,vy:-50,life:.25,t:0,c:'#a8d8ff',g:300,s:1}); p.dead=w!=='rain'; p.y=-10; p.x=Math.random()*(LW+80)-40; } }
   else if(p.k==='s'){ p.y+=40*p.v*dt; p.x+=(Math.sin(now*1.5+p.ph)*14+dir*80)*dt; if(p.y>LH){ p.dead=w!=='ice'; p.y=-6; p.x=Math.random()*LW; } }
   else { const sp=(p.k==='l'?160:300)*p.v*Math.sign(dir||1); p.x+=sp*dt; p.y+=(p.k==='l'?Math.sin(now*4+p.ph)*40:0)*dt; if(p.x>LW+40||p.x<-40){ p.dead=!(w==='wind+'||w==='wind-'); p.x=dir>0?-30:LW+30; p.y=Math.random()*LH; } } }
  wxP=wxP.filter(p=>!p.dead||false); if(wxP.length>140) wxP.length=140; }
-function drawWeather(){ if(!world.wx) return; const w=world.wxNow, a=wxFade;
+function drawWeather(){ const w=wxKind(); if(!w) return; ctx.save(); ctx.beginPath(); ctx.rect(0,0,LW,LH); ctx.clip(); drawWeather0(w); ctx.restore(); }
+function drawWeather0(w){ const a=wxFade;
  if(w==='rain'){ ctx.fillStyle=`rgba(30,50,110,${.16*a})`; ctx.fillRect(0,0,LW,LH); }
  if(w==='ice'){ ctx.fillStyle=`rgba(180,220,255,${.12*a})`; ctx.fillRect(0,0,LW,LH); }
  // мокрые/заиндевевшие края блоков
  if(w==='rain'||w==='ice') for(const o of world.solids){ if(!o.alive||o.type==='s'||o.type==='h') continue; ctx.globalAlpha=a; ctx.fillStyle=w==='ice'?'#e8f8ff':'#9ad0ff'; ctx.fillRect(o.x,o.y,o.w,1);
    if(w==='ice'){ ctx.fillStyle='#ffffff'; for(let i=(o.x*7)%9;i<o.w;i+=9) ctx.fillRect(o.x+i,o.y+1,1,2); } else { const sh=(now*30+o.x)%Math.max(8,o.w); ctx.fillStyle='rgba(255,255,255,.7)'; ctx.fillRect(o.x+(sh|0),o.y,4,1); } ctx.globalAlpha=1; }
- for(const p of wxP){ if(p.k==='r'){ ctx.fillStyle='rgba(170,215,255,.75)'; const dx=((world.wind||0)/170)*2; ctx.fillRect(p.x|0,p.y|0,1,5); ctx.fillRect((p.x+dx)|0,(p.y+5)|0,1,2); }
+ for(const p of wxP){ if(p.k==='r'){ ctx.fillStyle='rgba(170,215,255,.75)'; const dx=(world.windSum()/170)*2; ctx.fillRect(p.x|0,p.y|0,1,5); ctx.fillRect((p.x+dx)|0,(p.y+5)|0,1,2); }
   else if(p.k==='s'){ ctx.fillStyle='#fff'; ctx.fillRect(p.x|0,p.y|0,1,1); if(p.v>.9){ ctx.fillRect((p.x|0)-1,p.y|0,3,1); ctx.fillRect(p.x|0,(p.y|0)-1,1,3); } }
   else if(p.k==='w'){ ctx.fillStyle='rgba(255,255,255,.45)'; ctx.fillRect(p.x|0,p.y|0,10+p.v*14|0,1); }
   else { ctx.fillStyle='#1a0c22'; ctx.fillRect((p.x|0)-1,(p.y|0)-1,5,4); ctx.fillStyle=p.c; ctx.fillRect(p.x|0,p.y|0,3,2); ctx.fillRect((p.x|0)+1,(p.y|0)+Math.round(Math.sin(now*6+p.ph)),1,1); } } }
@@ -1388,7 +1433,7 @@ function drawBossLabel(){ const b=world&&world.boss; if(!b||b.dead||!bossLbl||bo
  ctx.globalAlpha=al*(.18+.22*pu); ctx.fillStyle=bd.col; ctx.fillRect(x0+2,y0+2,w-4,15); ctx.globalAlpha=al*(blink?1:.82+.18*pu);
  T(nm,cx,y0+3,13,blink?['#ffffff','#ffffff']:['#ffffff',bd.col==='#e8f4ff'?'#9ad0ff':bd.col]); ctx.globalAlpha=al; DL.forEach((l,i)=>T(l,cx,y0+19+i*12,9,'#ffe9a0')); ctx.globalAlpha=1; }
 /* FB25: место таблички босса — выше/ниже/сбоку, без наложения на HUD, конфеты, слизня, банку ДОМ и всплывающие надписи; гистерезис + плавное следование, целые px */
-function bossLblObst(){ const R=[], w=world; const hb=(w.wx||relay)?62:30; R.push([0,0,LW,hb]); for(const c of w.candies) if(!c.got) R.push([c.x-12,c.y-9,24,18]); if(w.s&&w.s.st!=='poof') R.push([w.s.x-18,w.s.y-30,36,40]); const g=w.L.goal; R.push([g[0]-20,g[1]-48,40,52]);
+function bossLblObst(){ const R=[], w=world; const hb=((w.wx||relay)?62:30)+(chaosRun&&oy+LH+4>H-30?CHAOS_HB:0); R.push([0,0,LW,hb]); for(const c of w.candies) if(!c.got) R.push([c.x-12,c.y-9,24,18]); if(w.s&&w.s.st!=='poof') R.push([w.s.x-18,w.s.y-30,36,40]); const g=w.L.goal; R.push([g[0]-20,g[1]-48,40,52]);
  for(const f of floats){ if(f.t>=f.life) continue; const tw=textW(f.s,f.size||11), yy=f.y-(f.t/f.life)*14; R.push([f.x-tw/2-2,yy-2,tw+4,(f.size||11)+6]); } return R; }
 function bossLblPlace(b,w,h){ const R=bossLblObst(), ov=(x,y)=>{ let a=0; for(const r of R){ const ix=Math.min(x+w,r[0]+r[2])-Math.max(x,r[0]), iy=Math.min(y+h,r[1]+r[3])-Math.max(y,r[1]); if(ix>0&&iy>0) a+=ix*iy; } return a; };
  const C=[], bx=b.x, by=b.y, r=b.r; for(const [mode,yy] of [['a',by-r-h-13],['b',by+r+10],['a2',by-r-h-40],['b2',by+r+36]]) for(const dx of [0,-60,60,-110,110]){ const cx=Math.round(Math.max(w/2+3,Math.min(LW-w/2-3,bx+dx))), y0=Math.round(Math.max(4,Math.min(LH-h-6,yy))); const sc=ov(cx-w/2,y0)*10+Math.abs(dx)*2+(mode[0]==='b'?30:0)+(mode.length>1?60:0)+(Math.abs(y0-yy)>2?400:0); C.push({mode,dx,cx,y0,sc,above:mode[0]==='a'&&y0+h+4<=by-r}); }
@@ -1927,6 +1972,6 @@ try{ if(tg&&tg.onEvent) tg.onEvent('viewportChanged',rescale); }catch(e){}
 window.addEventListener('resize',rescale); for(const ms of [50,300,800]) setTimeout(rescale,ms);
 loadSprites().then(()=>{ buildSecretSprite(); if(!unlocked(selPick)) selPick=0; try{ if(save.selHyb&&hybList().includes(save.selHyb)){ const [a,b]=save.selHyb.split('_').map(Number); if(CHARS[a]&&CHARS[b]&&!fuseCheck(a,b)) fusion={a,b,level:null,used:false}; } else if(save.selSecret&&save.eggs&&save.eggs.secret) useSecret=true; }catch(e){} spritesReady=true; initMenuSlugs(); requestAnimationFrame(loop); });
 // хуки для тестов
-window.__game={get fx(){return fx},get fy(){return fy},get SCS(){return SCS},get TMIN(){return TMIN},wrapTxt:(a,b,c)=>wrapTxt(a,b,c),get wrapOvf(){return wrapOvf},set wrapOvf(v){wrapOvf=v},get ox(){return ox},get oy(){return oy},v4:{BOSS,WXN,QUESTS,HAPT,PAT,SECRET,BIO,get gyro(){return gyro},get mic(){return mic},get hLast(){return hLast},haptic:k=>haptic(k),isNight:()=>isNight(),setDate:d=>{DATE_OVR=d;},questsToday:()=>questsToday(),qEv:(i,n)=>qEv(i,n),hybAll:()=>hybAll(),hybList:()=>hybList(),houseOf:id=>houseOf(id),feedSlug:c=>feedSlug(c),petSlug:(c,h)=>petSlug(c,h,100,300),logoTap:()=>logoTap(),get relay(){return relay},get relayTeam(){return relayTeam},set relayTeam(v){relayTeam=v},relayTick:()=>relayTick(),gyroStart:()=>gyroStart(),micStart:()=>micStart(),set gyroG(v){gyro.on=true;gyro.g=v},set useSecret(v){useSecret=v},get useSecret(){return useSecret},wxFX:dt=>wxFX(dt),isApril1:()=>isApril1(),isHalloween:()=>isHalloween(),isNewYear:()=>isNewYear(),set houseSel(v){houseSel=v},set bestTab(v){bestTab=v},set bestPage(v){bestPage=v},set relayPick(v){relayPick=v}},FUSE_SPEC, fuseCheck:(a,b)=>fuseCheck(a,b), grafList:li=>grafList(li), GRAF_CAP, get chaos(){return chaosRun}, chaosStart:()=>chaosStart(), MODS, COSI, cos:()=>cosGet(), anchors:id=>anchors(id), drawSlugC:(...a)=>drawSlugC(...a), SECRETS:()=>SECRETS, gemsHave:()=>gemsHave(), get imp(){return {idleT,impStage,bubble}}, IMP_LINES, grafAdd:(...a)=>grafAdd(...a), grafClear:li=>grafClear(li), rescale:()=>rescale(), get menuSlugs(){return menuSlugs}, get H(){return H}, get W(){return W},get fusion(){return fusion}, set fusion(v){fusion=v}, get fusePick(){return fusePick}, set fusePick(v){fusePick=v}, fusedChar:(a,b)=>fusedChar(a,b), PC:()=>PC(), set fixDt(v){FIXDT=v}, openPause:()=>openPause(), get buttons(){return buttons}, TAP:()=>TAP(), get SC(){return SC}, get DPR(){return DPR},set selPage(v){selPage=v}, set lvlPage(v){lvlPage=v;lvlPageInit=true}, get lvlPage(){return lvlPage}, migrateSave, levelStars, isOpen, pc:()=>drawPlay.pc, unlocked, totalStars, save, get scene(){return scene}, set scene(v){scene=v}, startLevel, get world(){return world}, World, LV, CHARS, setChar:i=>{selPick=i}, get overlay(){return overlay}, toLevel:(x,y)=>[x*W/ (cv.getBoundingClientRect().width)]};
+window.__game={get fx(){return fx},get fy(){return fy},get SCS(){return SCS},get TMIN(){return TMIN},wrapTxt:(a,b,c)=>wrapTxt(a,b,c),get wrapOvf(){return wrapOvf},set wrapOvf(v){wrapOvf=v},get ox(){return ox},get oy(){return oy},v4:{BOSS,WXN,QUESTS,HAPT,PAT,SECRET,BIO,get gyro(){return gyro},get mic(){return mic},get hLast(){return hLast},haptic:k=>haptic(k),isNight:()=>isNight(),setDate:d=>{DATE_OVR=d;},questsToday:()=>questsToday(),qEv:(i,n)=>qEv(i,n),hybAll:()=>hybAll(),hybList:()=>hybList(),houseOf:id=>houseOf(id),feedSlug:c=>feedSlug(c),petSlug:(c,h)=>petSlug(c,h,100,300),logoTap:()=>logoTap(),get relay(){return relay},get relayTeam(){return relayTeam},set relayTeam(v){relayTeam=v},relayTick:()=>relayTick(),gyroStart:()=>gyroStart(),micStart:()=>micStart(),set gyroG(v){gyro.on=true;gyro.g=v},set useSecret(v){useSecret=v},get useSecret(){return useSecret},wxFX:dt=>wxFX(dt),isApril1:()=>isApril1(),isHalloween:()=>isHalloween(),isNewYear:()=>isNewYear(),set houseSel(v){houseSel=v},set bestTab(v){bestTab=v},set bestPage(v){bestPage=v},set relayPick(v){relayPick=v}},FUSE_SPEC, fuseCheck:(a,b)=>fuseCheck(a,b), grafList:li=>grafList(li), GRAF_CAP, get chaos(){return chaosRun}, chaosStart:()=>chaosStart(), MODS, chaosModOK:(m,L)=>chaosModOK(m,L), chaosPick:(n,L)=>chaosPick(n,L), chaosTick:dt=>chaosTick(dt), get chaosStat(){return chaosStat}, get wxP(){return wxP}, textW:(a,b)=>textW(a,b), CHAOS_HB, wxKind:()=>wxKind(), set drag(v){drag=v}, get drag(){return drag}, CHAOS_ICO, COSI, cos:()=>cosGet(), anchors:id=>anchors(id), drawSlugC:(...a)=>drawSlugC(...a), SECRETS:()=>SECRETS, gemsHave:()=>gemsHave(), get imp(){return {idleT,impStage,bubble}}, IMP_LINES, grafAdd:(...a)=>grafAdd(...a), grafClear:li=>grafClear(li), rescale:()=>rescale(), get menuSlugs(){return menuSlugs}, get H(){return H}, get W(){return W},get fusion(){return fusion}, set fusion(v){fusion=v}, get fusePick(){return fusePick}, set fusePick(v){fusePick=v}, fusedChar:(a,b)=>fusedChar(a,b), PC:()=>PC(), set fixDt(v){FIXDT=v}, openPause:()=>openPause(), get buttons(){return buttons}, TAP:()=>TAP(), get SC(){return SC}, get DPR(){return DPR},set selPage(v){selPage=v}, set lvlPage(v){lvlPage=v;lvlPageInit=true}, get lvlPage(){return lvlPage}, migrateSave, levelStars, isOpen, pc:()=>drawPlay.pc, unlocked, totalStars, save, get scene(){return scene}, set scene(v){scene=v}, startLevel, get world(){return world}, World, LV, CHARS, setChar:i=>{selPick=i}, get overlay(){return overlay}, toLevel:(x,y)=>[x*W/ (cv.getBoundingClientRect().width)]};
 window.__fb={houseAsleep:c=>houseAsleep(c),bubLayout:f=>bubLayout(f),get houseFX(){return houseFX},houseBubble:(a,x,y,c,b)=>houseBubble(a,x,y,c,b),get menuVar(){return MENU_VAR},set menuVar(v){MENU_VAR=v},get bossLbl(){return bossLbl},fed:{get sess(){return fedSess},fedN,end:()=>endFedSession()},bossLblDraw:()=>drawBossLabel(),night:{tapFirefly:(i)=>{ const fy=Math.round(Math.max(TAP()+150,Math.min(H*.36,H-360))); const p=ffPos(i,fy,TAP()); tapFirefly(i,p[0],p[1]); return p; },tapStar:()=>tapStar(),starPh:()=>starPh(),state:(k,id)=>nightState(k,id),get darkT(){return houseDarkT},set darkT(v){houseDarkT=v},sleepSprite:id=>sleepSprite(id),capSprite:k=>capSprite(k),MUMBLE,get fx(){return houseFX},pop:()=>nightPop,ffPos:i=>{ const fy=Math.round(Math.max(TAP()+150,Math.min(H*.36,H-360))); return ffPos(i,fy,TAP()); }},spr:id=>SPR[id],drawFace:(a,it,px,py,g)=>drawFace(a,it,px,py,g),get nastya(){return nastya},set nastya(v){nastya=v},nastyaTap:m=>nastyaTap(m),toggleLamp:()=>toggleLamp(),showReveal:(k,c)=>showReveal(k,c),get reveal(){return reveal},selectHybrid:(a,b)=>selectHybrid(a,b),hybPairs:()=>hybPairs(),set selTab(v){selTab=v},get selTab(){return selTab},set fusePick(v){fusePick=v},anchors:id=>anchors(id),COSI,accPos:(a,it)=>accPos(a,it),SECRET,get fusion(){return fusion},candySprite:v=>candySprite(v),houseOf:id=>houseOf(id),drawSlugC:(...a)=>drawSlugC(...a),get ctx(){return ctx},gfxReset:()=>gfxReset(),onHide:()=>onHide(),onResume:()=>onResume(),get resumes(){return resumes},get floats(){return floats}};
 })();
