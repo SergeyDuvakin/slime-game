@@ -223,7 +223,7 @@ function mnN(t){ if(!noiseBuf)return; const s=AC.createBufferSource(),g=AC.creat
 function setMute(m){ if(m&&!save.mute) muteT=now; save.mute=m; store(); if(master) master.gain.value=m?0:.5; }
 
 // ---------- canvas ----------
-const cv=document.getElementById('c'), ctx=cv.getContext('2d');
+const cv=document.getElementById('c'); let ctx=cv.getContext('2d');
 // A1: отдельный слой текста в нативных device-пикселях (чёткий текст)
 const tcv=document.getElementById('t'), tctx=tcv?tcv.getContext('2d'):null; let coverMode=false;
 let W=320,H=624,SC=1,DPR=1, ox=0, oy=0;
@@ -2073,20 +2073,31 @@ function resPortrait(id,cx,cy,sc,sil){ const r=RES.find(q=>q.id===id); ctx.save(
   if(id==='j'||id==='l'){ const b=w.solids.find(s=>s.type===id); if(id==='j') drawBridge(b,now); else drawLever(b,now); }
   else { w.crStep(0); for(const c of w.crs){ const D=CR[c.type]; if(D&&D.draw) D.draw(ctx,c,w,now); } if(id==='bug'){ const c=w.crs[0]; ctx.fillStyle='#ff4a8a'; ctx.fillRect(Math.round(c.x)-3,Math.round(c.y)+7,6,4); ctx.fillStyle='#ffd23c'; ctx.fillRect(Math.round(c.x)-1,Math.round(c.y)+8,2,2); } } }
  finally{ world=o; } ctx.restore(); }
+/* 5.0.4: габариты портрета (по пикселям, по всей анимации) — картинка всегда целиком в своей рамке */
+const resBX={};
+function resBox(id){ if(resBX[id]) return resBX[id]; const S=260, oc=document.createElement('canvas'); oc.width=S; oc.height=S; const g=oc.getContext('2d'); const c0=ctx, n0=now; let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;
+ try{ ctx=g; for(let k=0;k<12;k++){ now=k*.37; g.clearRect(0,0,S,S); resPortrait(id,S/2,S/2,1,false); const d=g.getImageData(0,0,S,S).data; for(let y=0;y<S;y++) for(let x=0;x<S;x++) if(d[(y*S+x)*4+3]>8){ if(x<x0)x0=x; if(x>x1)x1=x; if(y<y0)y0=y; if(y>y1)y1=y; } } }
+ catch(e){} finally{ ctx=c0; now=n0; }
+ const b=x1<x0?{x:-10,y:-10,w:20,h:20}:{x:x0-S/2,y:y0-S/2,w:x1-x0+1,h:y1-y0+1}; return resBX[id]=b; }
+function resFit(id,bx,by,bw,bh,maxSc,sil){ const r=RES.find(q=>q.id===id); if(!r||r.hy||sil){ const sc=Math.min(maxSc,bw/20,bh/20); resPortrait(id,bx+bw/2,by+bh/2,sc,true); return; }
+ const b=resBox(id); let sc=Math.min(maxSc,bw/b.w,bh/b.h); sc=sc>=1?Math.floor(sc*2)/2:sc; resPortrait(id,Math.round(bx+bw/2-(b.x+b.w/2)*sc),Math.round(by+bh/2-(b.y+b.h/2)*sc),sc,false); }
 /* карточка 260×200 по центру; заголовок fitTxt до 11 px, иначе перенос второй строкой */
-function drawResCard(id,onOk,tagNew){ const r=RES.find(q=>q.id===id); const tp=TAP(); const pw=Math.min(260,W-20), ph=Math.max(200,tp+176), px=(W-pw)/2|0, py=Math.max(8,(H-ph)/2|0);
- if(!tagNew){ ctx.fillStyle='rgba(12,4,24,.6)'; ctx.fillRect(0,-40,W,H+80); } panel(px,py,pw,ph,'#2b1a4a'); ctx.fillStyle='#ffd23c'; ctx.fillRect(px+2,py+2,pw-4,2);
+function drawResCard(id,onOk,tagNew){ const r=RES.find(q=>q.id===id); const tp=TAP(); const pw=Math.min(260,W-20);
  const full=(tagNew?'НОВОЕ: ':'')+r.full; let z=14; while(z>11&&textW(full,z)>pw-16) z--; let L1=[full];
  if(textW(full,z)>pw-16){ z=13; L1=[(tagNew?'НОВОЕ:':''),r.full].filter(Boolean); while(z>11&&L1.some(s=>textW(s,z)>pw-16)) z--; }
- L1.forEach((s,i)=>T(fitTxt(s,z,pw-16),W/2,py+8+i*(z+3),z,'#ffd23c')); const ty=py+8+L1.length*(z+3);
- const pY=ty+40; resPortrait(id,W/2,pY,L1.length>1?2.5:3);
- let rz=11, RL=r.r; while(rz>9&&RL.some(q=>textW(q,rz)>pw-14)) rz--; if(RL.some(q=>textW(q,rz)>pw-14)){ rz=10; RL=[].concat(...r.r.map(q=>wrapTxt(q,rz,pw-14))); } const ry=py+ph-tp-14-RL.length*(rz+4); RL.forEach((q,i)=>T(q,W/2,ry+i*(rz+4),rz,'#fff'));
- btn(px+(pw-140)/2,py+ph-tp-8,140,tp,'ПОНЯТНО',onOk,'#4ed05a',15); buttons[buttons.length-1].label='newok'; }
+ let rz=11, RL=r.r; while(rz>9&&RL.some(q=>textW(q,rz)>pw-14)) rz--; if(RL.some(q=>textW(q,rz)>pw-14)){ rz=10; RL=[].concat(...r.r.map(q=>wrapTxt(q,rz,pw-14))); }
+ /* 5.0.4: заголовок → рамка картинки → текст → кнопка, без наложений */
+ const titH=8+L1.length*(z+3), picH=Math.max(70,Math.min(96,H-titH-RL.length*(rz+4)-tp-60)), txtH=RL.length*(rz+4), ph=titH+6+picH+8+txtH+8+tp+10, px=(W-pw)/2|0, py=Math.max(8,(H-ph)/2|0);
+ textClear(); /* 5.0.4: текст списка не просвечивает поверх карточки */ if(!tagNew){ ctx.fillStyle='rgba(12,4,24,.6)'; ctx.fillRect(0,-40,W,H+80); } panel(px,py,pw,ph,'#2b1a4a'); ctx.fillStyle='#ffd23c'; ctx.fillRect(px+2,py+2,pw-4,2);
+ L1.forEach((s,i)=>T(fitTxt(s,z,pw-16),W/2,py+8+i*(z+3),z,'#ffd23c')); const picY=py+titH+6;
+ ctx.save(); ctx.beginPath(); ctx.rect(px+6,picY,pw-12,picH); ctx.clip(); resFit(id,px+12,picY+2,pw-24,picH-4,3,false); ctx.restore();
+ const ry=picY+picH+8; RL.forEach((q,i)=>T(q,W/2,ry+i*(rz+4),rz,'#fff'));
+ btn(px+(pw-140)/2,py+ph-tp-10,140,tp,'ПОНЯТНО',onOk,'#4ed05a',15); buttons[buttons.length-1].label='newok'; }
 function drawNewOverlay(){ const id=overlay.q[0]; drawResCard(id,()=>{ sfx('tap'); resMark(id); overlay.q.shift(); if(!overlay.q.length) overlay=null; else overlayT=0; },true); }
 let resView=null;
 function drawResTab(y0,tp){ const n=RES.filter(r=>resOpen(r.id)).length; const ch=Math.max(78,Math.min(96,Math.floor((H-y0-tp-24)/4))), per=Math.max(3,Math.floor((H-y0-tp-24)/ch)), pages=Math.ceil(RES.length/per); if(bestPage>=pages) bestPage=0;
  RES.slice(bestPage*per,bestPage*per+per).forEach((r,k)=>{ const y=y0+k*ch, op=resOpen(r.id); panel(10,y,W-20,ch-6,op?'#2b1a4a':'#1e1430'); ctx.fillStyle=op?'#ffd23c':'#3a2a52'; ctx.fillRect(11,y+1,3,ch-8);
-  ctx.save(); ctx.beginPath(); ctx.rect(14,y+1,64,ch-8); ctx.clip(); resPortrait(r.id,46,y+(ch-6)/2+4,2,!op); ctx.restore(); const mw=W-20-84-8;
+  ctx.save(); ctx.beginPath(); ctx.rect(14,y+1,64,ch-8); ctx.clip(); resFit(r.id,17,y+4,58,ch-14,2,!op); ctx.restore(); const mw=W-20-84-8;
   T(r.kind,W-16,y+7,10,op?'#ffd23c':'#6a5a88','r');
   if(op){ T(fitTxt(r.nm,13,mw-30),84,y+5,13,['#fff','#ffd23c'],'l'); r.bio.forEach((s,i)=>T(fitTxt(s,9,mw),84,y+23+i*11,9,'#e8dcff','l')); T(fitTxt('Где живёт: '+r.home,9,mw),84,y+47,9,'#7affe0','l'); if(ch>80) T(fitTxt(r.likes,9,mw),84,y+59,9,'#ffb0d8','l');
    buttons.push({x:10,y,w:W-20,h:ch-6,label:'res_'+r.id,cb:()=>{ sfx('tap'); resView=r.id; }}); }
