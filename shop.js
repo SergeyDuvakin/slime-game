@@ -462,6 +462,34 @@ const CAT=[
   '.owpwpwpwo.',
   'ooooooooooo'],{season:'bd',gift:1}),
  SP('candles','Свечки',40,{season:'bd',fx:'candles'}),
+ // ---- 5.1 Гибридариум: награды глав (не продаются, выдаются за босса главы)
+ HD('hzflask','Шапка «Пробирка»',0,{c:'#b8783c',d:'#d89a58',e:'#8a5428',b:'#9ad8ff',w:'#ffffff',g:'#2ad0a0',l:'#7affe0',y:'#c8f0ff',s:'#5a6278',h:'#8a92a8',k:'#3a4258'},[
+  '.....oooooo.....',
+  '.....oddddo.....',
+  '.....ocecco.....',
+  '....oooooooo....',
+  '....obwbbbbo....',
+  '....obwbbybo....',
+  '....owbbbbbo....',
+  '....ollllllo....',
+  '....oglgygyo....',
+  '....oggygggo....',
+  '....oglggggo....',
+  '....ogggglgo....',
+  '.oooooooooooooo.',
+  'ohhhhhhhhhhhhhso',
+  'oskskskskskskkso',
+  '.oooooooooooooo.'],{season:'hz',gift:1,hz:1}),
+ TR('hzsoap','Мыльные пузыри',0,{fx:'soap',season:'hz',gift:1,hz:1}),
+ F('hzweld','Очки «Сварщик»',0,{a:'#8a92a8',b:'#1e6a4a',c:'#9affc8',d:'#5a6278'},[
+  '.oooo...oooo.',
+  'oacbao.oacbao',
+  'obbbbaoabbbbo',
+  'obbbbdddbbbbo',
+  'odbbdo.odbbdo',
+  '.oooo...oooo.'],{gl:1,lens:['#8a92a8','#1e6a4a','#9affc8'],eye:['..ooo..','.oaaao.','oacbbao','oabbbao','oabbbao','.oaaao.','..ooo..'],epal:{a:'#8a92a8',b:'rgba(30,106,74,.85)',c:'#9affc8'},season:'hz',gift:1,hz:1}),
+ N('hzbee','Пчелиный шарфик',0,{kind:'scarf',c:['#ffd23c','#1a0c22'],sh:'#c89a10',season:'hz',gift:1,hz:1}),
+ SP('hzgum','Жвачный пузырь',0,{fx:'gumbub',season:'hz',gift:1,hz:1}),
  // ---- Рамки (6): карточка выбора, бестиарий, гардероб
  FR('frwood','Деревянная',40,{fr:'wood'}), FR('frsilver','Серебряная',90,{fr:'silver'}), FR('frneon','Неоновая',90,{fr:'neon'}), FR('frjelly','Мармеладная',90,{fr:'jelly'}), FR('frgold','Золотая',150,{fr:'gold'}), FR('frlegend','Неделька-легенда',180,{fr:'gold',chest:1}), FR('frweek','Гибрид недели',180,{fr:'week',chest:1}),
 ];
@@ -574,6 +602,7 @@ const CONF=['#ff4a6a','#ffd23c','#4ef0ff','#7aff7a','#c87aff','#ff9a2a'], RAIN=[
 function spawn(k,x,y,o={}){ const p=Object.assign({k,x,y,vx:0,vy:0,g:0,t:0,life:ECON.trailLife,c:null},o); FXP.push(p); if(FXP.length>48) FXP.shift(); }
 function trailSpawn(fx,s,i){ const x=s.x+(Math.random()-.5)*6, y=s.y+(Math.random()-.5)*6;
  if(fx==='rainbow'){ spawn('rain',Math.round(s.x),Math.round(s.y)-3,{life:.6}); return; }
+ if(fx==='soap'){ if(i%3) return; spawn('soap',x,y,{vy:-14-Math.random()*10,vx:(Math.random()-.5)*16,r:2+(i%4),life:1.1}); return; }
  if(fx==='bubble') spawn('spr',x,y,{s:'bubble',vy:-18,vx:(Math.random()-.5)*10});
  else if(fx==='pollen') spawn('dot',x,y,{c:Math.random()<.5?'#ffe04a':'#fff6a0',vy:-8,vx:(Math.random()-.5)*16,sz:2});
  else if(fx==='note') spawn('spr',x,y,{s:'note',vy:-24,vx:(Math.random()-.5)*14});
@@ -588,6 +617,7 @@ function trailSpawn(fx,s,i){ const x=s.x+(Math.random()-.5)*6, y=s.y+(Math.rando
 function splatFx(fx,x,y){ x=Math.round(x); y=Math.round(y);
  if(fx==='ink'||fx==='pancake'||fx==='web'){ DEC.push({s:fx,x,y,t:0,life:fx==='web'?1.6:1.4}); if(fx==='ink') for(let i=0;i<6;i++) spawn('dot',x,y-2,{c:'#3a3ab0',vx:(Math.random()-.5)*90,vy:-40-Math.random()*50,g:300,sz:2,life:.6}); return; }
  if(fx==='rainbow'){ DEC.push({s:'ring',x,y,t:0,life:.6}); return; }
+ if(fx==='gumbub'){ DEC.push({s:'gumbub',x,y,t:0,life:.9}); return; }
  if(fx==='flour'){ DEC.push({s:'flour',x,y,t:0,life:1.3}); for(let i=0;i<14;i++) spawn('dot',x+(Math.random()-.5)*10,y-3,{c:i%3?'#ffffff':'#f0e8d8',vx:(Math.random()-.5)*70,vy:-30-Math.random()*50,g:-10,sz:2,life:.9}); return; }
  const n=fx==='confetti'?16:fx==='petal'?12:8; for(let i=0;i<n;i++){ const a=-Math.PI*(i+.5)/n, v=50+Math.random()*50;
   if(fx==='star') spawn('spr',x,y-4,{s:'star',vx:Math.cos(a)*v,vy:Math.sin(a)*v,g:160,life:.7});
@@ -596,14 +626,27 @@ function splatFx(fx,x,y){ x=Math.round(x); y=Math.round(y);
   else if(fx==='candles'){ if(i%2) spawn('spr',x,y-6,{s:'candles',vx:Math.cos(a)*v*.7,vy:Math.sin(a)*v*1.2,g:220,life:.9}); else spawn('dot',x,y-6,{c:i%4?'#ffd23c':'#ff8ad0',vx:Math.cos(a)*v,vy:Math.sin(a)*v*1.3,g:200,sz:2,life:.7}); } } }
 function fxStep(dt){ for(const p of FXP){ p.t+=dt; p.vy+=p.g*dt; p.x+=p.vx*dt; p.y+=p.vy*dt; if(p.k==='spr'&&p.s==='petal') p.x+=Math.sin(p.t*9)*.4; } for(let i=FXP.length-1;i>=0;i--) if(FXP[i].t>=FXP[i].life) FXP.splice(i,1); for(const d of DEC) d.t+=dt; for(let i=DEC.length-1;i>=0;i--) if(DEC[i].t>=DEC[i].life) DEC.splice(i,1); }
 function fxPaint(g=ctx){ for(const d of DEC){ const a=Math.min(1,(d.life-d.t)/.4); g.globalAlpha=a;
-  if(d.s==='ring'){ const r=Math.round(4+d.t/d.life*16); RAIN.forEach((c,k)=>{ g.fillStyle=c; const rr=r-k; if(rr<1) return; for(let q=0;q<=16;q++){ const an=Math.PI+Math.PI*q/16; g.fillRect(Math.round(d.x+Math.cos(an)*rr),Math.round(d.y+Math.sin(an)*rr*.7),2,1); } }); }
+  if(d.s==='gumbub'){ g.globalAlpha=1; gumBub(g,d.x,d.y,d.t/d.life); }
+  else if(d.s==='ring'){ const r=Math.round(4+d.t/d.life*16); RAIN.forEach((c,k)=>{ g.fillStyle=c; const rr=r-k; if(rr<1) return; for(let q=0;q<=16;q++){ const an=Math.PI+Math.PI*q/16; g.fillRect(Math.round(d.x+Math.cos(an)*rr),Math.round(d.y+Math.sin(an)*rr*.7),2,1); } }); }
   else { const c=pixItem(SPRS[d.s]); g.drawImage(c,Math.round(d.x-c.width/2),Math.round(d.y-c.height+2)); } }
  for(const p of FXP){ const a=Math.min(1,(p.life-p.t)/(p.life*.4)); g.globalAlpha=Math.max(0,a);
   if(p.k==='dot'){ g.fillStyle=p.c; g.fillRect(Math.round(p.x),Math.round(p.y),p.sz||1,p.h||p.sz||1); }
+  else if(p.k==='soap'){ soapDraw(g,p.x+Math.sin(p.t*6+p.r)*1.5,p.y,p.r+(p.t>p.life*.85?1:0),p.t*3,p.t>p.life*.85); }
   else if(p.k==='rain'){ RAIN.forEach((c,k)=>{ g.fillStyle=c; g.fillRect(p.x-1,p.y+k,3,1); }); }
   else if(p.k==='bat'){ const c=pixItem(SPRS[(Math.floor(p.t*10)%2)?'bat1':'bat0']); g.drawImage(c,Math.round(p.x-3),Math.round(p.y-2)); g.fillStyle='#ff3a4a'; g.fillRect(Math.round(p.x-1),Math.round(p.y),1,1); g.fillRect(Math.round(p.x+1),Math.round(p.y),1,1); }
   else { const c=pixItem(SPRS[p.s]); g.drawImage(c,Math.round(p.x-c.width/2),Math.round(p.y-c.height/2)); } }
  g.globalAlpha=1; }
+/* «Жвачный пузырь»: розовый пузырь надувается из лужицы и лопается брызгами (u = 0..1) */
+function gumBub(g,x,y,u){ x=Math.round(x); y=Math.round(y); const P=(a,b,c,d,col)=>{ g.fillStyle=col; g.fillRect(a,b,c,d); };
+ P(x-9,y-1,18,3,'#1a0c22'); P(x-8,y-1,16,2,'#ff8fc8'); P(x-7,y-1,5,1,'#ffd0ea');
+ if(u<.72){ const r=Math.max(2,Math.round(2+u/.72*9)), cy=y-r-1; for(let a=0;a<r*8;a++){ const t=a/(r*8)*Math.PI*2; P(Math.round(x+Math.cos(t)*(r+1)),Math.round(cy+Math.sin(t)*(r+1)),1,1,'#1a0c22'); }
+  g.save(); g.beginPath(); g.arc(x,cy,r,0,7); g.fillStyle='#ff8fc8'; g.fill(); g.restore(); P(x-Math.ceil(r/2),cy-Math.ceil(r/2),2,2,'#ffffff'); P(x+Math.floor(r/3),cy+Math.floor(r/3),2,1,'#e05a9a'); }
+ else { const k=(u-.72)/.28; for(let i=0;i<8;i++){ const t=-Math.PI*(i+.5)/8, rr=6+k*10; P(Math.round(x+Math.cos(t)*rr),Math.round(y-7+Math.sin(t)*rr*.8),2,2,i%2?'#ff8fc8':'#ffd0ea'); } } }
+function soapDraw(g,x,y,r,ph,pop){ x=Math.round(x); y=Math.round(y); const C=['#ff8fc8','#7affe0','#c8f0ff','#ffe04a','#c8f0ff','#9ad8ff'];
+ if(pop){ g.fillStyle='#c8f0ff'; for(let a=0;a<8;a++){ const t=a/8*Math.PI*2; g.fillRect(Math.round(x+Math.cos(t)*(r+1)),Math.round(y+Math.sin(t)*(r+1)),1,1); } return; }
+ g.save(); const ga=g.globalAlpha; g.globalAlpha=ga*.2; g.fillStyle='#c8f0ff'; g.beginPath(); g.arc(x,y,r,0,7); g.fill(); g.globalAlpha=ga;
+ const n=Math.max(8,r*6); for(let a=0;a<n;a++){ const t=a/n*Math.PI*2; g.fillStyle=C[(Math.floor(a/n*6+ph)%6+6)%6]; g.fillRect(Math.round(x+Math.cos(t)*r),Math.round(y+Math.sin(t)*r),1,1); }
+ g.fillStyle='#fff'; g.fillRect(x-Math.ceil(r/2),y-Math.ceil(r/2),1,1); if(r>3) g.fillRect(x-Math.ceil(r/2)+1,y-Math.ceil(r/2),1,1); g.restore(); }
 let trI=0;
 function fxDraw(s,tryIt){ const t=G.now; const dt=fxT===null?0:Math.max(0,Math.min(.05,t-fxT)); fxT=t; const cz=cosGet(); const tid=tryIt&&tryIt.slot==='trail'?tryIt.id:cz.trail;
  if(tid&&s&&s.st==='fly'){ const it=BY[tid]; const rate=it&&it.fx==='rainbow'?60:30; fxAcc+=dt*rate; while(fxAcc>=1){ fxAcc-=1; if(FXP.filter(p=>p.k!=='dot'||p.life>.4).length<ECON.trailMax||it.fx==='rainbow') trailSpawn(it.fx,s,trI++); } } else fxAcc=0;
@@ -654,6 +697,8 @@ function iconOf(it){ if(!it||!it.id) return null; if(icCache[it.id]) return icCa
   if(fx==='rainbow'){ for(let i=0;i<14;i++) RAIN.forEach((col,k)=>{ x.fillStyle=col; x.fillRect(2+i,Math.round(9-Math.sin(i/13*Math.PI)*6)+k-2,1,1); }); }
   else if(fx==='ink'||fx==='pancake'||fx==='web'||fx==='flour'){ const s=pixItem(SPRS[fx]); x.drawImage(s,Math.round(9-s.width/2),Math.round(7-s.height/2)); }
   else if(fx==='confetti'){ [[2,3],[7,1],[12,4],[4,8],[10,9],[15,7],[8,12]].forEach(([a,b],i)=>{ x.fillStyle=CONF[i%6]; x.fillRect(a,b,3,2); }); }
+  else if(fx==='gumbub'){ gumBub(x,9,12,.55); }
+  else if(fx==='soap'){ [[5,7,4],[12,4,3],[13,11,2],[3,2,1]].forEach(([a,b,r],i)=>soapDraw(x,a,b,r,i*1.5,false)); }
   else if(fx==='pollen'||fx==='spark'){ [[3,3],[8,6],[13,2],[5,10],[12,10],[15,6],[9,1]].forEach(([a,b],i)=>{ x.fillStyle=fx==='spark'?(i%2?'#ffffff':'#ffe04a'):(i%2?'#ffe04a':'#fff6a0'); x.fillRect(a,b,2,2); }); }
   else { const key=fx==='bat'?'bat0':fx==='stardust'?'star':fx==='snow'?'flake':fx; const s=pixItem(SPRS[key]); [[1,6],[7,1],[12,7]].forEach(([a,b])=>x.drawImage(s,Math.min(18-s.width,a),Math.min(14-s.height,b))); }
   c=cc; }
@@ -754,5 +799,6 @@ const setFx={ win(gx,gy){ if(setOn('pirate')){ DEC.push({s:'flag',x:Math.round(g
 function skate(x,y,dir){ if(cosGet().feet!=='skates') return false; if(Math.random()<.6) spawn('dot',x+(Math.random()-.5)*10,y,{c:Math.random()<.5?'#ffffff':'#ffe04a',vx:-dir*(30+Math.random()*50),vy:-20-Math.random()*40,g:220,sz:1,life:.3}); return true; }
 /* прогресс сета в гардеробе: собранный сет главнее, иначе тот, где надето больше (≥2) */
 function setProgress(){ const cz=cosGet(); let best=null; for(const S of SETS){ const n=S.items.filter(i=>cz[BY[i].slot]===i).length; if(n>=2&&(!best||n>best.n)) best={id:S.id,name:S.name,n}; } return best; }
-return {setProgress,skate,SETS,setOn,setsWorn,setFx,feetPos,feetGeo,drawFeet,bdayOn,bdTick,frame,frameRect,FRP,ECON,CAT,BY,SEASONS,draw,back,fxDraw,splat,voice,drawNeck,roll,vitFor,priceOf,buy,canBuy,equip,owns,seasonOn,curSeason,exclFor,weekKey,isoWeek,ymd,UI,neckGeo,iconOf,setTry:i=>{tryIt=i?BY[i]:null;},get tryIt(){return tryIt},fxCount:()=>FXP.length+DEC.length,splatFx,trailSpawn,clearFx:()=>{FXP.length=0;DEC.length=0;}};
+function give(id){ if(!BY[id]||owns(id)) return false; sh().own.push(id); store(); return true; }
+return {gumBub,give,setProgress,skate,SETS,setOn,setsWorn,setFx,feetPos,feetGeo,drawFeet,bdayOn,bdTick,frame,frameRect,FRP,ECON,CAT,BY,SEASONS,draw,back,fxDraw,splat,voice,drawNeck,roll,vitFor,priceOf,buy,canBuy,equip,owns,seasonOn,curSeason,exclFor,weekKey,isoWeek,ymd,UI,neckGeo,iconOf,setTry:i=>{tryIt=i?BY[i]:null;},get tryIt(){return tryIt},fxCount:()=>FXP.length+DEC.length,splatFx,trailSpawn,clearFx:()=>{FXP.length=0;DEC.length=0;}};
 };
