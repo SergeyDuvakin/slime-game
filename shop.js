@@ -665,6 +665,7 @@ const UI={tab:'wear',slot:'head',sub:'vit',flt:'all',page:0,card:null,confirm:fa
 const WSLOTS=[['head','Голова'],['face','Лицо'],['neck','Шея'],['feet','Низ'],['trail','Шлейф'],['splat','Плюх'],['voice','Крик'],['frame','Рамка'],['skin','Скин']];
 const FSLOTS=[['all','Все'],['head','Голова'],['face','Лицо'],['neck','Шея'],['feet','Низ'],['trail','Шлейф'],['splat','Плюх'],['voice','Крик'],['frame','Рамка']];
 let tryIt=null;
+function chipRows(L,y,on,cb,pfx){ const per=Math.ceil(L.length/2), cw=Math.floor((G.W-16)/per), h=TAP()-6; L.forEach(([k,t],i)=>{ const r=i<per?0:1, j=r?i-per:i, n=r?L.length-per:per, x0=8+Math.floor((G.W-16-n*cw)/2); chip(x0+j*cw,y+r*(h+4),cw-3,h,t,on(k),()=>cb(k),pfx+k); }); return 2*(h+4); }
 function chip(x,y,w,h,label,on,cb,id){ btn(x,y,w,h,'',cb,on?'#c04a9a':'#3a2a5a',10); G.buttons[G.buttons.length-1].label=id; const b=G.buttons[G.buttons.length-1]; T(fitTxt(label,10,w-6),x+w/2,y+(h-4)/2-6,10,on?'#fff':'#d8c8f0'); }
 function header(tp){ iconBtn(4,4,icBack,()=>{ if(!back()) { sfx('tap'); G.scene='select'; } },'back'); T('Гардероб',G.W/2,tp/2-9,16,['#fff','#ffd23c']);
  const bal=String(G.save.candy|0); const shk=G.now-UI.shakeT<.35?Math.round(Math.sin((G.now-UI.shakeT)*60)*2):0; candy(G.W-18-textW(bal,13)-14+shk,tp/2,G.now,0); T(bal,G.W-14+shk,tp/2-8,13,'#ff8ad0','r'); }
@@ -674,9 +675,9 @@ function previewSlug(cx,cy,k,withTry){ const c=PC(); const t=G.now; const fly=wi
  else { const sp=withTry?(tryIt&&tryIt.slot==='splat'?tryIt:null):(UI.slot==='splat'&&cosGet().splat?BY[cosGet().splat]:null); if(sp&&t-UI.demoT>1.6){ UI.demoT=t; splatFx(sp.fx,0,12); } fxDraw(null,null); drawSlugC(c.id,'idle',frameOf('idle',t),0,0); }
  ctx.restore(); }
 function drawWear(tp,y){ const cz=cosGet(); UI.prevY=y+70; panel(G.W/2-110,y,220,150,'#22143e'); frame(G.W/2-110,y,220,150); previewSlug(G.W/2,y+86,2,false); { const sp=setProgress(); T(PC().name,G.W/2,sp?y+124:y+130,11,'#fff'); if(sp){ const C=sp.n===3?['Сет «'+sp.name+'» собран!','«'+sp.name+'» собран!','Сет собран!']:['Сет «'+sp.name+'»: '+sp.n+' из 3','«'+sp.name+'»: '+sp.n+' из 3','Сет: '+sp.n+' из 3']; const txt=C.find(t=>textW(t,10)<=196)||C[2], sz=10; UI.setTxt=txt; T(txt,G.W/2,y+138,sz,sp.n===3?'#ffd23c':'#c8b8e0'); } else UI.setTxt=''; } y+=158;
- const n=WSLOTS.length, cw=Math.floor((G.W-16)/n); WSLOTS.forEach(([k,t],i)=>chip(8+i*cw,y,cw-2,TAP(),t,UI.slot===k,()=>{ sfx('tap'); UI.slot=k; UI.demoT=0; },'wslot_'+k)); y+=TAP()+8;
+ y+=chipRows(WSLOTS,y,k=>UI.slot===k,k=>{ sfx('tap'); UI.slot=k; UI.demoT=0; },'wslot_')+4;
  const slot=UI.slot; let list=COSI[slot].filter(it=>!it.shop||owns(it.id)); list=[{id:'',name:slot==='voice'?'Писк':'нет'}].concat(list);
- const cols=6, cw2=Math.floor((G.W-16)/cols), chh=Math.max(TAP(),52);
+ const cols=6, cw2=Math.floor((G.W-16)/cols), rows=Math.ceil(list.length/cols), chh=Math.max(40,Math.min(Math.max(TAP(),52),Math.floor((G.H-8-y)/rows)));
  list.forEach((it,k)=>{ const x=8+(k%cols)*cw2, yy=y+Math.floor(k/cols)*chh; const op=!it.id||cosOpen(it), sel=(cz[slot]||'')===it.id;
   panel(x+1,yy,cw2-2,chh-3,sel?'#2a6a5a':op?'#2b1a4a':'#1a1020'); const cx=x+cw2/2|0, cy=yy+chh/2-3|0;
   if(!it.id){ if(slot==='voice') drawIcon({id:'_v',slot:'voice'},cx,cy-4,cw2-8,chh-20); else T('—',cx,cy-6,12,'#a898c8'); if(slot==='voice') T('Писк',cx,yy+chh-17,9,'#d8c8f0'); }
@@ -706,7 +707,7 @@ function drawShop(tp,y){ const s=roll(); const se=curSeason(); const subs=[['vit
    T('ЭКСКЛЮЗИВ НЕДЕЛИ · ещё '+daysToMonday()+' дн.',x+70,y+10,10,'#ffd23c','l'); T(fitTxt(ex.name,12,w-80),x+70,y+26,12,'#fff','l'); if(own) T('✓ куплено',x+70,y+44,11,'#7affe0','l'); else { T(String(ECON.tier.excl),x+70,y+44,11,'#ffd23c','l'); miniCandy(x+74+textW(String(ECON.tier.excl),11),y+48,1); }
    G.buttons.push({x,y,w,h,label:'excl',cb:()=>openCard(ex.id,'excl')}); } }
  else { const pool=UI.sub==='season'?CAT.filter(i=>i.season===se.id):CAT.filter(i=>!i.season&&!i.excl&&!i.chest&&(UI.flt==='all'||i.slot===UI.flt));
-  if(UI.sub==='all'){ const fw=Math.floor((G.W-16)/FSLOTS.length); FSLOTS.forEach(([k,t],i)=>chip(8+i*fw,y,fw-2,TAP(),t,UI.flt===k,()=>{ sfx('tap'); UI.flt=k; UI.page=0; },'flt_'+k)); y+=TAP()+8; }
+  if(UI.sub==='all'){ y+=chipRows(FSLOTS,y,k=>UI.flt===k,k=>{ sfx('tap'); UI.flt=k; UI.page=0; },'flt_')+4; }
   else { const d=se.to; T(se.name+' · до '+String(d[1]).padStart(2,'0')+'.'+String(d[0]).padStart(2,'0'),G.W/2,y,12,'#ff8a1c'); y+=20; }
   const ch2=big?100:90, rows=Math.max(1,Math.floor((G.H-y-TAP()-14)/(ch2+8))), per=rows*3, pages=Math.max(1,Math.ceil(pool.length/per)); UI.page=Math.min(UI.page,pages-1);
   pool.slice(UI.page*per,UI.page*per+per).forEach((it,i)=>itemCard(gap+(i%3)*(cw+gap),y+Math.floor(i/3)*(ch2+8),cw,ch2,it.id,UI.sub==='season'?'season':'all','all'+i));

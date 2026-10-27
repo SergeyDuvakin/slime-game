@@ -1,5 +1,5 @@
 'use strict';
-window.__ASSET_V='5.0.1';
+window.__ASSET_V='5.0.2';
 /* FB14: долгое нажатие — без выделения текста, лупы и контекстного меню (Telegram WebView / iOS / Android); поля ввода не трогаем */
 (()=>{ const editable=t=>!!(t&&t.closest&&t.closest('input,textarea,select,[contenteditable]')); const stop=e=>{ if(!editable(e.target)) e.preventDefault(); };
  ['contextmenu','selectstart','dragstart','gesturestart'].forEach(k=>document.addEventListener(k,stop,{passive:false,capture:true}));
