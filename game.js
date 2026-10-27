@@ -1,5 +1,5 @@
 'use strict';
-window.__ASSET_V='5.1.1';
+window.__ASSET_V='5.1.2';
 /* FB14: долгое нажатие — без выделения текста, лупы и контекстного меню (Telegram WebView / iOS / Android); поля ввода не трогаем */
 (()=>{ const editable=t=>!!(t&&t.closest&&t.closest('input,textarea,select,[contenteditable]')); const stop=e=>{ if(!editable(e.target)) e.preventDefault(); };
  ['contextmenu','selectstart','dragstart','gesturestart'].forEach(k=>document.addEventListener(k,stop,{passive:false,capture:true}));
@@ -122,7 +122,8 @@ function migrateSave(sv,nLevels){
  const ss=sv.stats&&typeof sv.stats==='object'?sv.stats:{}; sv.stats={splats:num(ss.splats),launches:num(ss.launches),bosses:num(ss.bosses)};
  sv.v=5; migrateV6(sv,nLevels); return sv; }
 const wasV=save.v, wasVX=save.vx; migrateSave(save,(window.LEVELS||[]).length); save.stars=save.stars.slice(0,(window.LEVELS||[]).length);
-function storeRaw(){ localStorage.setItem('shmyak_v1',JSON.stringify(save)); }
+let nastya=false, nTaps=[], nReal=null; const NASTYA_CANDY=99999; /* FB8 Режим Насти (5.1.2: объявлен до storeRaw) */
+function storeRaw(){ if(nastya&&nReal!==null){ /* 5.1.2: Режим Насти — в сейв пишутся НАСТОЯЩИЕ конфеты (+заработанные), бесконечные не сохраняются */ const d=(save.candy|0)-NASTYA_CANDY; if(d>0) nReal+=d; save.candy=NASTYA_CANDY; const o=JSON.parse(JSON.stringify(save)); o.candy=nReal; localStorage.setItem('shmyak_v1',JSON.stringify(o)); return; } localStorage.setItem('shmyak_v1',JSON.stringify(save)); }
 const store=()=>{ try{ storeRaw(); return true; }catch(e){ /* 18.1: QuotaExceeded — сначала старые призраки, потом альбом, потом повтор */
   try{ const ks=Object.keys(save.gh||{}).sort((a,b)=>((save.gh[a]||{}).ts||0)-((save.gh[b]||{}).ts||0)); while(ks.length){ delete save.gh[ks.shift()]; try{ storeRaw(); return true; }catch(_){} }
    while(save.gm&&save.gm.alb&&save.gm.alb.length){ save.gm.alb.shift(); try{ storeRaw(); return true; }catch(_){} } }catch(_){} return false; } };
@@ -185,7 +186,7 @@ function sfx(n,a){ if((n==='bounce'||n==='boing'||n==='bumper')&&ff.k>1.01){ con
 var ff={w:null,k:1,man:false,off:false,acc:0,snd:0,on:false};
 function ffMode(){ const f=SET().fast; return f==='btn'||f==='off'?f:'auto'; }
 function ffReset(){ ff.k=1; ff.man=false; ff.off=false; ff.acc=0; ff.on=false; }
-function ffAutoOk(w){ const s=w.s; return ffMode()==='auto'&&!ff.off&&s.fly>=2&&(s.used||!w.taps.length)&&!s.zone&&!w.inWater(s)&&!w.slow&&!lvFlying(w); }
+function ffAutoOk(w){ const s=w.s; return ffMode()==='auto'&&!ff.off&&s.fly>=2&&(s.used||!w.taps.length)&&!s.zone&&!w.inWater(s)&&!w.slow&&!lvFlying(w)&&!(s.wbT!==undefined&&w.t-s.wbT<3); }
 /* 5.0.1: пока летит груз качалки, авто-ускорение не включаем — иначе ящик посреди дуги рывком ускорялся ×2 и потом резко замедлялся */
 function lvFlying(w){ return !!(w.lvB&&w.lvB.some(b=>!b.dead&&!b.ret&&!b.rest)); }
 function ffTick(dt,sd){ const w=world, s=w.s; if(ff.w!==w){ ff.w=w; ffReset(); } if(s.st!=='fly'||w.result||ffMode()==='off'){ if(ff.k>1||ff.man||ff.off) ffReset(); return; }
@@ -390,8 +391,10 @@ function hzBaseHas(i,k){ const c=CHARS[i]; if(!c) return false; if(k in HZ_TR) r
 function hzCharHas(ch,k){ if(!ch) return false; if(ch.fuse) return hzBaseHas(ch.fuse[0],k)||hzBaseHas(ch.fuse[1],k); const i=CHARS.indexOf(ch); return i>=0?hzBaseHas(i,k):false; }
 function hzOwnAb(k){ for(let i=0;i<CHARS.length;i++) if(hzBaseHas(i,k)&&unlocked(i)) return true; return false; }
 function hzAbCost(k){ let m=1e9; for(let i=0;i<CHARS.length;i++) if(hzBaseHas(i,k)) m=Math.min(m,CHARS[i].cost||0); return m<1e9?m:0; }
-function hzHybFor(need){ const L=hybList().filter(h=>{ const [a,b]=h.split('_').map(Number); return need.every(k=>hzBaseHas(a,k)||hzBaseHas(b,k)); }); if(!L.length) return null; return save.selHyb&&L.includes(save.selHyb)?save.selHyb:L[L.length-1]; }
-function hzMakePair(need){ for(let a=0;a<CHARS.length;a++){ if(!unlocked(a)||!hzBaseHas(a,need[0])) continue; for(let b=0;b<CHARS.length;b++){ if(a===b||!unlocked(b)||!hzBaseHas(b,need[1])||fuseCheck(a,b)) continue; return [a,b]; } } return null; }
+function hzHybFor(need){ const L=hybList().filter(h=>{ const [a,b]=h.split('_').map(Number); return need.every(k=>hzBaseHas(a,k)||hzBaseHas(b,k)); }); if(!L.length) return null; /* 5.1.2: детерминированно — сначала каноническая пара уровня, потом выбранный, потом первый по порядку */ const a=hzCanon(need[0]), b=hzCanon(need[1]); for(const k of [a+'_'+b,b+'_'+a]) if(L.includes(k)) return k; if(a>=0&&b>=0&&a!==b&&unlocked(a)&&unlocked(b)&&!fuseCheck(a,b)) return null; /* каноническую можно создать — предлагаю её, а не случайный подходящий */ if(save.selHyb&&L.includes(save.selHyb)) return save.selHyb; return L.slice().sort((x,y)=>{ const [p,q]=x.split('_').map(Number), [r,t]=y.split('_').map(Number); return p-r||q-t; })[0]; }
+/* 5.1.2: каноническая пара уровня — те же слизни, что проверяет солвер (черта → её слизень, способность → слизень с ней ОСНОВНОЙ) */
+function hzCanon(k){ if(k in HZ_TR) return HZ_TR[k]; return CHARS.findIndex(c=>!c.fuse&&c.ab===k); }
+function hzMakePair(need){ { const a=hzCanon(need[0]), b=hzCanon(need[1]); if(a>=0&&b>=0&&a!==b&&unlocked(a)&&unlocked(b)&&!fuseCheck(a,b)) return [a,b]; } for(let a=0;a<CHARS.length;a++){ if(!unlocked(a)||!hzBaseHas(a,need[0])) continue; for(let b=0;b<CHARS.length;b++){ if(a===b||!unlocked(b)||!hzBaseHas(b,need[1])||fuseCheck(a,b)) continue; return [a,b]; } } return null; }
 const hzOpenEntry=()=>hybList().length>=HZ_NEED;
 function hzChOpen(c){ const C=HZD.CH[c]; if(!C||C.soon) return false; if(c===0) return true; const z=hzS(); return !!z.done[c*10-1]&&totalStars()>=(C.star||0); }
 function hzLvOpen(i){ const z=hzS(); return hzChOpen(Math.floor(i/10))&&(i%10===0||!!z.done[i-1]); }
@@ -1042,14 +1045,14 @@ class World{
   // кнопки
   for(const bt of this.buttons) if(!bt.on&&Math.hypot(s.x-bt.x,s.y-bt.y)<16){ bt.on=true; for(const o of this.solids) if(o.type==='d'&&o.arg===bt.id) o.alive=false; this.ev.push(['button',bt.x,bt.y]); }
   // губка: вода как батут
-  if(wat&&this.has('sponge')&&s.vy>0){ s.vy=-(this.L.hz?Math.max(s.vy*.86,330*K):Math.max(s.vy*.95,330*K)); /* 5.1.1: в Гибридариуме высокие падения — отскоки быстро гаснут до обычных */ s.y=wat[1]-1; this.ev.push(['boing',s.x,s.y,null]); }
+  if(wat&&this.has('sponge')&&s.vy>0){ s.vy=-(this.L.hz?Math.max(s.vy*.86,330*K):Math.max(s.vy*.95,330*K)); /* 5.1.1: в Гибридариуме высокие падения — отскоки быстро гаснут до обычных */ s.y=wat[1]-1; s.wbT=this.t; /* 5.1.2: прыжки по воде не ускоряются автоперемоткой */ this.ev.push(['boing',s.x,s.y,null]); }
   for(const o of this.allSolids()){ const c=circRect(s.x,s.y,R,o.x,o.y,o.w,o.h); if(!c) continue; if(o.arg==='shaft'&&main) this.s3bad=1; if(o.type==='o'&&!(c.ny<-.6&&s.vy*s.gs>=0&&s.y<o.y)) continue; if(o.type==='h'&&HZG(o.arg)&&!this.keyOK(o.arg)&&main&&!this.geneHint&&o.arg!=='glass'){ this.geneHint=1; this.ev.push(['genebump',o.x+o.w/2,o.y,o.arg.slice(5)]); } if(o.type==='h'&&o.arg!=='shell'&&!HZG(o.arg)&&!this.keyOK(o.arg)&&main&&!this.secHint){ this.secHint=1; this.ev.push(['secbump',o.x+o.w/2,o.y]); } if(o.type==='h'&&o.arg!=='shell'&&o.arg!=='glass'&&this.keyOK(o.arg)){ o.alive=false; this.ev.push([HZG(o.arg)?'gene':'secret',o.x+o.w/2,o.y+o.h/2,o]); continue; }
    if(s.ghost>0&&o.type!=='h'&&!(o.type==='c'&&o.arg==='lab')&&!(c.ny<-.6&&c.pen<8&&o.type!=='s')){ if(main&&!s.gp){ s.gp=1; this.ev.push(['ghostpass',s.x,s.y]); } continue; }
    if(o.type==='s'&&!ch.spiky&&!(s.inv>0)){
     if(this.shield>0){ this.shield=0; this.ev.push(['shield',s.x,s.y]); }
     else if(!main){ s.st='dead'; return; }
     else { s.st='poof'; s.at=.7; if(this.has('refund')){ this.shots++; this.used--; this.ev.push(['refund',s.x,s.y]); } this.ev.push(['ouch',s.x,s.y]); return; } }
-   if(o.type==='i'&&this.has('melt')){ o.alive=false; this.ev.push(['melt',o.x+o.w/2,o.y+o.h/2,o]); continue; }
+   if(o.type==='i'&&this.has('melt')){ o.alive=false; this.ev.push(['melt',o.x+o.w/2,o.y+o.h/2,o]); /* 5.1.2: в Гибридариуме пар от растаявшего льда подкидывает снизу — слизень не падает обратно */ if(this.L.hz&&s.vy<0&&s.y>o.y+o.h/2) s.vy=Math.min(s.vy,-320*K); continue; }
    const rvx=s.vx-(o.vx||0), rvy=s.vy-(o.vy||0); const vn=rvx*c.nx+rvy*c.ny;
    if(vn<0&&c.ny<-.6&&s.gs>0){ if(o.type==='j'&&-vn>120*K) jTouch(this,o,s); if(o.type==='l'&&s.vy>=200*K&&(o.side==='l'?s.x>o.x+o.w/2:s.x<o.x+o.w/2)){ s.x+=c.nx*c.pen; s.y+=c.ny*c.pen; if(lvFlip(this,o,s,s.vy)) continue; } }
    if(o.type==='c'&&vn<0&&(this.has('crush')||(-vn>300*K&&o.arg!=='lab'))){ o.alive=false; s.vx*=.8; s.vy*=.8; this.ev.push(['crate',o.x+o.w/2,o.y+o.h/2,o]); continue; }
@@ -1251,7 +1254,7 @@ function drawChute(x,y){ const C=['...OOOOOOOOO...','.OOrrWWWWWrrOO.','OrrrrWWWW
 
 // ---------- B8: ТАЙНЫЕ ДВЕРИ ----------
 const SECRETS=LV.map((l,i)=>l.sec?{li:i,...l.sec}:null).filter(Boolean);
-const gemsHave=()=>(Array.isArray(save.gems)?save.gems:[]).filter(i=>LV[i]&&LV[i].sec);
+const gemsHave=()=>nastya?LV.map((L,i)=>i).filter(i=>LV[i]&&LV[i].sec):(Array.isArray(save.gems)?save.gems:[]).filter(i=>LV[i]&&LV[i].sec); /* 5.1.2: Режим Насти — все ◆ */
 const gemOf=i=>Array.isArray(save.gems)&&save.gems.includes(i);
 const DOORCOL={crack:['#6a6070','#9a90a0','#2a2030'],vent:['#4a5a6a','#8aa0b0','#1a2028'],neon:['#ff3ad0','#ffb0f0','#3a0a3a'],ice:['#8ad0ff','#e0f4ff','#2a5a8a'],honey:['#e8a020','#ffd870','#6a3a08'],moss:['#3a8a3a','#8ae070','#143a14'],hatch:['#8a5a2a','#c8904a','#3a2008'],mirror:['#b0b8d0','#ffffff','#40485a'],snow:['#e8f0ff','#ffffff','#8aa0c0'],twin:['#c03040','#ff8a90','#401018']};
 function drawSecretDoor(o,t,style){ const x=o.x|0,y=o.y|0,w=o.w,h=o.h; const [c0,c1,c2]=DOORCOL[style]||DOORCOL.crack; ctx.fillStyle=c2; ctx.fillRect(x,y,w,h); ctx.fillStyle=c0; ctx.fillRect(x+1,y+1,w-2,h-2);
@@ -1759,7 +1762,7 @@ function drawMenu(){ drawBG(0,Math.sin(now*.2)*30,now);
  T('тяни • целься • шмякай',W/2,my+4,12,'#fff3d8');
  const tot=uiCount('stars',save.stars.reduce((a,b)=>a+(b||0),0),now,cuTick); const s1=tot+' / '+LV.length*3; starIcon(W/2-68,my+27,true); T(s1,W/2-58,my+24,12,'#ffd23c','l'); T('◆ '+gemsHave().length+'/'+SECRETS.length,W/2+30,my+24,12,'#7affff','l'); if(save.legacy) T('+'+save.legacy+' ★ из старой версии',W/2,my+44,10,'#d8c8f0');
 }
-const totalStars=()=>save.stars.reduce((a,b)=>a+(b||0),0)+(save.legacy|0);
+const totalStars=()=>nastya?Math.max(999,save.stars.reduce((a,b)=>a+(b||0),0)+(save.legacy|0)):save.stars.reduce((a,b)=>a+(b||0),0)+(save.legacy|0); /* 5.1.2: Режим Насти — ★ бесконечные (не сохраняются) */
 const levelStars=()=>save.stars.reduce((a,b)=>a+(b||0),0);
 const isOpen=i=>i===0||i<(save.open|0)||(save.stars[i-1]||0)>0;
 const unlocked=i=>totalStars()>=CHARS[i].cost;
@@ -2540,12 +2543,12 @@ function drawRelayPick(){ drawBG(0,0,now); swipePager=null; const tp=TAP(); icon
  const hy=Math.min(H-30,y+56+tp); T('каждый бросок — следующий слизень,',W/2,hy,10,'#c8b8e0'); T('с того места, где шмякнулся прошлый. +1 бросок',W/2,hy+14,10,'#c8b8e0'); }
 // ---------- меню v4 ----------
 // ---------- FB8: «Режим Насти» — 5 быстрых тапов по любому слизню внизу главного меню → бесконечные жизни до закрытия игры (НЕ сохраняется) ----------
-let nastya=false, nTaps=[];
+/* Режим Насти: объявлен выше (storeRaw) */
 function nastyaTap(m){ m.vy=-210; m.vx=0; nTaps=nTaps.filter(t=>now-t<2.5); nTaps.push(now); const n=nTaps.length; sfx('candy',n%4); haptic('tick'); const mx=m.x-ox, my=m.y-40-oy;
  if(nastya){ floats.push({s:'♥ Режим Насти уже включён ♥',x:W/2-ox,y:H*.62-oy,t:0,life:1.2,size:11,col:'#ff8ad0'}); nTaps=[]; return; }
  floats.push({s:'♥'.repeat(n),x:mx,y:my,t:0,life:.9,size:11,col:'#ff5aa8'}); burst(mx,my+20,4+n*2,['#ff4a8a','#ffb0d8'],70,40,.6);
- if(n>=5){ nTaps=[]; nastya=true; sfx('win'); haptic('success'); flash=.12; for(let k=0;k<4;k++) setTimeout(()=>burst(W*(k+1)/5-ox,H*.45-oy,26,['#ff4a8a','#ff8ad0','#ffd0ea','#fff'],180,70,1.2,120),k*120);
-  floats.push({s:'Режим Насти: ♥ ∞',x:W/2-ox,y:H*.70-oy,t:0,life:3.2,size:18,col:['#ffd0ea','#ff4a8a'],pop:1}); floats.push({s:'бесконечные жизни — до выхода из игры',x:W/2-ox,y:H*.70-oy+26,t:0,life:3.2,size:10,col:'#ffe0f0'}); } }
+ if(n>=5){ nTaps=[]; nastya=true; nReal=save.candy|0; save.candy=NASTYA_CANDY; sfx('win'); haptic('success'); flash=.12; for(let k=0;k<4;k++) setTimeout(()=>burst(W*(k+1)/5-ox,H*.45-oy,26,['#ff4a8a','#ff8ad0','#ffd0ea','#fff'],180,70,1.2,120),k*120);
+  floats.push({s:'Режим Насти: ♥ ∞',x:W/2-ox,y:H*.70-oy,t:0,life:3.2,size:18,col:['#ffd0ea','#ff4a8a'],pop:1}); floats.push({s:'бесконечные жизни, 🍬, ★ и ◆ — до выхода из игры',x:W/2-ox,y:H*.70-oy+26,t:0,life:3.2,size:10,col:'#ffe0f0'}); } }
 /* FB22: главное меню — группы вместо 6 одинаковых радужных кнопок: ИГРАТЬ (герой) + МОИ СЛИЗНИ / РЕЖИМЫ / КОЛЛЕКЦИЯ, по одному цветовому семейству на группу, пиксельные иконки */
 let MENU_VAR='A';
 const MICON={flask:['..1111..','...11...','...11...','..1111..','.111111.','11111111','.111111.'],play:['11......','1111....','111111..','11111111','111111..','1111....','11......'],
@@ -2840,7 +2843,7 @@ const mflCh=id=>CHARS.find(c=>c.id===id)||(typeof SECRET!=='undefined'&&SECRET.i
 const MFL_R=13;
 function mflDay(){ const d=today(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
 function mflGrab(x,y,id){ if(!SET().mfl) return null; for(let i=menuSlugs.length-1;i>=0;i--){ const m=menuSlugs[i]; if(m.fl) continue; const hw=Math.max(20,TAP()/2); if(Math.abs(x-m.x)<=hw&&y>=m.gy-46&&y<=m.gy+10){ mfl.drag={m,x0:x,y0:y,cx:x,cy:y,id,t:performance.now(),act:false}; return buttons.find(b=>b.label==='ms_'+m.id)||{label:'ms_'+m.id,x:m.x,cb:()=>{}}; } } return null; }
-function mflMove(x,y){ const d=mfl.drag; d.cx=x; d.cy=y; const l=Math.hypot(x-d.x0,y-d.y0); if(!d.act&&l>=8){ const m=d.m; if(mflSleep(m)){ return; } if(menuSlugs.filter(q=>q.fl).length>=3){ m.nudge=now; return; } d.act=true; pressed=null; lastPullF=-1; } if(d.act){ const f=Math.round(Math.min(1,l/MAXDRAG)*7); if(f!==lastPullF){ if(lastPullF>=0){ sfx('stretch',f); if(f%2===0) haptic('tick'); } lastPullF=f; } mfl.aim=mflCh(d.m.id).ab==='preview'?mflPathB(d.m,d.cx-d.x0,d.cy-d.y0,70):mflPath(d.m,d.cx-d.x0,d.cy-d.y0,40); } }
+function mflMove(x,y){ const d=mfl.drag; d.cx=x; d.cy=y; const l=Math.hypot(x-d.x0,y-d.y0); if(!d.act&&l>=8){ const m=d.m; if(mflSleep(m)){ /* 5.1.2: спящего (ночь/скука) оттягивание будит, а не игнорируется */ m.awake=true; m.wake=now; floats.push({s:'Ммм… ну ладно!',x:m.x-ox,y:m.gy-64-oy,t:0,life:1.2,size:10,col:'#e8dcff'}); } if(menuSlugs.filter(q=>q.fl).length>=3){ m.nudge=now; return; } d.act=true; pressed=null; lastPullF=-1; } if(d.act){ const f=Math.round(Math.min(1,l/MAXDRAG)*7); if(f!==lastPullF){ if(lastPullF>=0){ sfx('stretch',f); if(f%2===0) haptic('tick'); } lastPullF=f; } mfl.aim=mflCh(d.m.id).ab==='preview'?mflPathB(d.m,d.cx-d.x0,d.cy-d.y0,70):mflPath(d.m,d.cx-d.x0,d.cy-d.y0,40); } }
 function mflVel(m,dx,dy){ const l=Math.hypot(dx,dy); if(l<8) return null; const k=Math.min(l,MAXDRAG)/l, v=560*K*mflCh(m.id).power/MAXDRAG; return [-dx*k*v,-dy*k*v]; }
 /* тот же шаг, что World.previewPath: 1/60 с, подшаги ≤5 px, 4..24 */
 function mflStep(b,g,dt){ const n=Math.min(24,Math.max(4,Math.ceil(Math.hypot(b.vx,b.vy)*dt/5))), h=dt/n; for(let i=0;i<n;i++){ b.vy+=g*h; if(b.vy>900*K) b.vy=900*K; if(b.vy<-900*K) b.vy=-900*K; if(b.vx>1100*K) b.vx=1100*K; if(b.vx<-1100*K) b.vx=-1100*K; b.x+=b.vx*h; b.y+=b.vy*h; if(b.coll&&b.coll(b)) return; } }
