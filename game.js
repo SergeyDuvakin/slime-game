@@ -1,5 +1,5 @@
 'use strict';
-window.__ASSET_V='5.0.2';
+window.__ASSET_V='5.0.3';
 /* FB14: долгое нажатие — без выделения текста, лупы и контекстного меню (Telegram WebView / iOS / Android); поля ввода не трогаем */
 (()=>{ const editable=t=>!!(t&&t.closest&&t.closest('input,textarea,select,[contenteditable]')); const stop=e=>{ if(!editable(e.target)) e.preventDefault(); };
  ['contextmenu','selectstart','dragstart','gesturestart'].forEach(k=>document.addEventListener(k,stop,{passive:false,capture:true}));
@@ -10,7 +10,7 @@ window.__ASSET_V='5.0.2';
 (()=>{
 const K=4/3; let LW=320, LH=588; const R=13, RB=13, MAXDRAG=104, G0=620*K;
 // Ф1м (ТЗ 26.9.6 + 26.10.11): магнит Медка — захват насовсем, разгон, радиус +бонус за скорость. Скорости/радиусы ×K
-const MAG={R0:80,RBK:.05,RBMAX:40,V0:150,ACC:1800,VMAX:1000,MARGIN:120,PICK:17,RESET_T:.25,TRAIL:6,POP_GAP:.06};
+const MAG={EASE:7,R0:40,RBK:.02,RBMAX:12,V0:60,ACC:700,VMAX:650,MARGIN:50,PICK:17,RESET_T:.25,TRAIL:6,POP_GAP:.06};
 const SPLAT_V=470*K;
 const CHARS=[
  {id:'slug01',name:'Желейка',perk:'Супер-прыгучая',desc:'Отскакивает как мячик',col:'#a57af0',rest:.72,fric:.6,power:1,grav:1,splat:1.25},
@@ -688,7 +688,7 @@ class World{
    if(s.st==='poof'||s.st==='win'){ if(c.trN) this.magTrail(c,dt,true); continue; }
    let dx=s.x-c.x, dy=s.y-c.y, d=Math.hypot(dx,dy);
    if(!c.cap){ if(c.trN) this.magTrail(c,dt,true); const r=(M.R0+(s.st==='fly'?Math.min(M.RBMAX,sp/K*M.RBK):0))*K; if(d>=r||!this.losFree(s.x,s.y,c.x,c.y)) continue; c.cap=true; c.hv=M.V0*K; this.ev.push(['magcap',c.x,c.y]); }
-   const fl=sp+M.MARGIN*K, vmax=Math.max(M.VMAX*K,fl); c.hv=Math.min(vmax,Math.max(c.hv+M.ACC*K*dt,fl));
+   const fl=sp+M.MARGIN*K, vmax=Math.max(M.VMAX*K,fl); c.hv=Math.min(vmax,c.hv+M.ACC*K*dt+(fl>c.hv?(fl-c.hv)*Math.min(1,dt*M.EASE):0)); /* 5.0.3: плавный разгон к скорости слизня, без рывка */
    const stp=Math.min(d,c.hv*dt); if(d>0){ c.x+=dx/d*stp; c.y+=dy/d*stp; } this.magTrail(c,dt);
    if(Math.hypot(s.x-c.x,s.y-c.y)<M.PICK) this.pickCandy(c,true); } }
  /* шлейф: кольцо из MAG.TRAIL точек, шаг 1/60 с, без аллокаций; fade — точки гаснут */
