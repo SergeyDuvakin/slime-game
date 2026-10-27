@@ -1,5 +1,5 @@
 'use strict';
-window.__ASSET_V='5.1.0';
+window.__ASSET_V='5.1.1';
 /* FB14: долгое нажатие — без выделения текста, лупы и контекстного меню (Telegram WebView / iOS / Android); поля ввода не трогаем */
 (()=>{ const editable=t=>!!(t&&t.closest&&t.closest('input,textarea,select,[contenteditable]')); const stop=e=>{ if(!editable(e.target)) e.preventDefault(); };
  ['contextmenu','selectstart','dragstart','gesturestart'].forEach(k=>document.addEventListener(k,stop,{passive:false,capture:true}));
@@ -458,10 +458,14 @@ function drawHzCard(){ const i=hzCard.i, d=HZD.L[i], z=hzS(), tp=TAP(), pw=Math.
  const m=z.st[i]|0, conds=['дойти до банки','собрать все 3 конфеты',d.s3.t]; conds.forEach((c,j)=>{ const y=py+98+j*21; hzFlask(px+14,y-4,!!(m>>j&1),2); T(fitTxt(c,11,pw-50),px+34,y,11,(m>>j&1)?'#7affe0':'#e8d8ff','l'); });
  const by=py+ph-tp-12; let bw=pw-24;
  if(hk){ const [a,b]=hk.split('_').map(Number); const sel=fusion&&hybKey(fusion.a,fusion.b)===hk; if(!sel){ btn(px+12,by-tp-8,bw,tp,'ВЗЯТЬ ГИБРИДА',()=>{ sfx('tap'); selectHybrid(a,b); hzToast('Взят: '+fusedChar(a,b).name,by-tp-20,'#7affe0'); },'#2a88a8',13); buttons[buttons.length-1].label='hztake'; } else T('играешь: '+fitTxt(fusedChar(a,b).name,11,pw-80),W/2,by-tp+4,11,'#7affe0'); }
- else if(mk){ btn(px+12,by-tp-8,bw,tp,'СОЗДАТЬ ГИБРИДА',()=>{ sfx('tap'); fusePick=[mk[0],mk[1]]; hzCard=null; scene='fuse'; hzBackFuse=true; },'#c04a9a',13); buttons[buttons.length-1].label='hzmake'; }
+ else if(mk){ btn(px+12,by-tp-8,bw,tp,'СОЗДАТЬ ГИБРИДА',()=>{ sfx('tap'); fusePick=[mk[0],mk[1]]; hzMakeLv=hzCard?hzCard.i:-1; hzCard=null; scene='fuse'; hzBackFuse=true; },'#c04a9a',13); buttons[buttons.length-1].label='hzmake'; }
  else T('Пока нет слизней с нужной парой',W/2,by-tp+4,10,'#ffd23c');
  btn(px+12,by,bw,tp,'ШМЯК!',()=>{ sfx('tap'); hzCard=null; hzStart(i); },'#4ed05a',16); buttons[buttons.length-1].label='hzgo'; }
-let hzBackFuse=false; const PCtap=k=>!!CHARS.find(c=>c.ab===k&&c.tap);
+let hzBackFuse=false, hzMakeLv=-1;
+/* 5.1.1: «ИГРАТЬ» после создания гибрида: пришли из карточки уровня Гибридариума — сразу этот уровень; иначе, если Гибридариум открыт, — первый открытый уровень под этого гибрида (или уровень 1), иначе — обычные уровни */
+function hzAfterFuse(r){ const back=hzBackFuse, lv=hzMakeLv; hzBackFuse=false; hzMakeLv=-1; if(back&&lv>=0){ hzStart(lv); return; }
+ if(hzOpenEntry()){ const z=hzS(); if(!z.intro){ hzEnter(); return; } const HL=hzLevels(); const ch=r&&r.ch; let i=-1; if(ch&&ch.fuse) i=HL.findIndex((L,k)=>hzLvOpen(k)&&L.need.every(n=>hzCharHas(ch,n))); hzStart(i>=0?i:0); return; }
+ scene='levels'; } const PCtap=k=>!!CHARS.find(c=>c.ab===k&&c.tap);
 /* ---- запуск/выход ---- */
 function hzStart(i){ hzLevels(); LV=HZL; hzRun={i,ch:Math.floor(i/10)}; const z=hzS(); z.last=i; startLevel(i); }
 function hzLeave(){ LV=LV0; hzRun=null; hzCh=hzCh<0?-1:hzCh; scene='hzmap'; }
@@ -476,7 +480,7 @@ function hzCanSkip(){ const i=curLevel, z=hzS(); return hzRun&&i%10!==9&&(hzFail
 function hzHud(hy,tp){ { if(!hzRun||!world||!world.L.need) return; const nd=world.L.need, ch=PC(); const y=hy+tp+4, x0=6;
   ctx.fillStyle='rgba(18,8,24,.7)'; ctx.fillRect(x0-2,y-2,62,28);
   nd.forEach((k,j)=>{ const x=x0+j*32, ok=hzCharHas(ch,k); ctx.fillStyle='#1a0c22'; ctx.fillRect(x,y,24,24); ctx.fillStyle=ok?'#2a6a5a':'#3a2a52'; ctx.fillRect(x+1,y+1,22,22); if(!hzOwnAb(k)) ctx.globalAlpha=.35; drawAbIcon(ctx,k,x,y,2); ctx.globalAlpha=1;
-   buttons.push({x:x-6,y:y-6,w:36,h:36,label:'hzhud'+j,cb:()=>{ sfx('tap'); const own=hzOwnAb(k); floats.push({s:own?hzNm(k)+(PCtap(k)?': тап в полёте':''):hzNm(k)+' — откроется на ★'+hzAbCost(k),x:LW/2,y:y+46-oy,t:0,life:1.6,size:11,col:own?'#e8fff8':'#ffd23c'}); }}); });
+   buttons.push({x:x-4,y:y-2,w:32,h:32,label:'hzhud'+j, /* 5.1.1: зона тапа иконок пары не залезает на «назад»/«заново» */cb:()=>{ sfx('tap'); const own=hzOwnAb(k); floats.push({s:own?hzNm(k)+(PCtap(k)?': тап в полёте':''):hzNm(k)+' — откроется на ★'+hzAbCost(k),x:LW/2,y:y+46-oy,t:0,life:1.6,size:11,col:own?'#e8fff8':'#ffd23c'}); }}); });
   T('+',x0+28,y+5,12,'#fff'); } }
 
 // ---------- backgrounds ----------
@@ -766,9 +770,9 @@ CR.snail={ r:7, ghostPass:true,
 CR.hog={ r:7, ghostPass:true,
  step(c,w,dt){ if(!c.st.e){ c.st.e=hzEdges(w,c.x0,c.y0); c.st.d=c.p.dir||1; c.x=c.x0; } const [a,b]=c.st.e, v=(c.p.spd||70)*K; let nx=c.x+c.st.d*v*dt; const wallHit=w.allSolids().some(o=>o.alive!==false&&o.type!=='o'&&o.type!=='s'&&circRect(nx,c.y0-7,6,o.x,o.y,o.w,o.h)&&o.y<c.y0-1); /* ёж разворачивается у стен */ if(nx<a+7||nx>b-7||wallHit){ c.st.d=-c.st.d; c.st.turn=w.t; nx=Math.max(a+7,Math.min(b-7,nx)); } c.x=nx; c.y=c.y0-7; c.st.rot=(c.st.rot||0)+c.st.d*v*dt/7;
   const s=w.s; if(s&&s.hog===(c.x0*1000+c.y0)){ if(s.st==="idle"){ s.x=c.x; s.y=c.y-7-RB+1; s.hover=true; s.hogD=c.st.d; w.hogT=(w.hogT||0)+dt; } else s.hog=undefined; }
-  else if(s&&s.st==='idle'&&!s.hover&&Math.hypot(s.x-c.x,s.y-c.y)<7+RB){ if(w.ch.spiky){ s.hog=(c.x0*1000+c.y0); s.hogD=c.st.d; s.hover=true; } else { const d=Math.sign(s.x-c.x)||c.st.d; s.st='fly'; s.vx=d*220*K; s.vy=-200*K; s.fly=0; s.used=true; s.hist=[]; w.combo=0; w.comboPend=0; w.hogHit=1; w.ev.push(['hog',c.x,c.y]); } } },
+  else if(s&&s.st==='idle'&&!s.hover&&!(c.cd>0)&&Math.hypot(s.x-c.x,s.y-c.y)<7+RB){ if(w.ch.spiky){ s.hog=(c.x0*1000+c.y0); s.hogD=c.st.d; s.hover=true; } else { const d=Math.sign(s.x-c.x)||c.st.d; /* 5.1.1: после толчка ёж разворачивается и не догоняет слайма пинг-понгом */ c.st.d=-d; c.cd=.8; s.st='fly'; s.vx=d*220*K; s.vy=-200*K; s.fly=0; s.used=true; s.hist=[]; w.combo=0; w.comboPend=0; w.hogHit=1; w.ev.push(['hog',c.x,c.y]); } } },
  pos(c,t){ return {x:c.x,y:c.y0-7}; },
- hit(c,w,s){ if(s!==w.s) return false; if(w.ch.spiky&&s.vy>0&&s.y<c.y-2&&(s.fly||0)>.15){ s.st='idle'; s.vx=s.vy=0; s.hog=(c.x0*1000+c.y0); s.hogD=c.st.d; s.hover=true; s.x=c.x; s.y=c.y-7-RB+1; w.ev.push(['hogride',c.x,c.y]); return true; } if(c.cd>0) return true; c.cd=.3; const d=Math.sign(s.x-c.x)||1; s.vx=d*220*K; s.vy=-200*K; w.combo=0; w.comboPend=0; w.hogHit=1; w.ev.push(['hog',c.x,c.y]); return true; },
+ hit(c,w,s){ if(s!==w.s) return false; if(w.ch.spiky&&s.vy>0&&s.y<c.y-2&&(s.fly||0)>.15){ s.st='idle'; s.vx=s.vy=0; s.hog=(c.x0*1000+c.y0); s.hogD=c.st.d; s.hover=true; s.x=c.x; s.y=c.y-7-RB+1; w.ev.push(['hogride',c.x,c.y]); return true; } if(c.cd>0) return true; c.cd=.8; const d=Math.sign(s.x-c.x)||1; c.st.d=-d; s.vx=d*220*K; s.vy=-200*K; w.combo=0; w.comboPend=0; w.hogHit=1; w.ev.push(['hog',c.x,c.y]); return true; },
  draw(g,c,w,now){ const x=Math.round(c.x), y=Math.round(c.y), turn=c.st.turn!==undefined&&w.t-c.st.turn<.25; crR(g,x-7,y-7,14,14,CR_O); crR(g,x-6,y-6,12,12,'#8a5a3a');
   if(turn){ const d=c.st.d; crR(g,x+d*3-1,y-2,3,2,'#e8dcc8'); crR(g,x+d*5,y-1,1,1,CR_O); crR(g,x+d*1,y-3,1,1,CR_O); return; }
   const r=c.st.rot||0; for(let k=0;k<8;k++){ const a=r+k*Math.PI/4, px=Math.round(x+Math.cos(a)*8), py=Math.round(y+Math.sin(a)*8); crR(g,px-1,py-1,2,2,CR_O); crR(g,px,py,1,1,'#e8dcc8'); const ix=Math.round(x+Math.cos(a+.4)*4), iy=Math.round(y+Math.sin(a+.4)*4); crR(g,ix,iy,1,1,'#c8a07a'); } crR(g,x-4,y-5,3,1,'#b07a52'); } };
@@ -975,7 +979,7 @@ class World{
  support(b){ const R=RB*(this.mod&&this.mod.hit||1); if(b.wall||b.hover) return true; if(b.y>=LH-R-.5) return true; if(this.inWater(b)) return true;
   for(const o of this.allSolids()){ if(o.type==='s') continue; if(o.type==='o'&&b.y>o.y-R+3) continue; if(circRect(b.x,b.y+2.5,R,o.x,o.y,o.w,o.h)){ if(o.mover||o.type==='v') b.ground=o; return true;} } return false; }
  inWater(b){ for(const w of this.water) if(inRect(b.x,b.y,w)) return w; return null; }
- settle(b,why){ b.vx=0; b.vy=0; b.st='idle'; b.gs=1; b.chute=false; b.ghost=0; if(why==='hover') b.hover=true; this.ev.push(['rest',why||'']); }
+ settle(b,why){ b.vx=0; b.vy=0; b.st='idle'; b.gs=1; b.chute=false; b.ghost=0; /* 5.1.1: призрак не застревает внутри стены — выталкиваю к ближнему краю */ if(this.allSolids) for(const o of this.allSolids()){ if(o.alive===false||o.type!=='g'||o.h<=o.w) continue; if(b.x>o.x+2&&b.x<o.x+o.w-2&&b.y>o.y+2&&b.y<o.y+o.h-2){ b.x=(b.x-o.x<o.x+o.w-b.x)?o.x-RB-1:o.x+o.w+RB+1; break; } } if(why==='hover') b.hover=true; this.ev.push(['rest',why||'']); }
  step(dt){ this.t+=dt; this.updMovers(dt); this.v4pre(dt); this.crStep(dt); blkStep(this,dt);
   for(const b of this.bumpers) b.hit=Math.max(0,b.hit-dt);
   for(const o of this.solids) o.hit=Math.max(0,o.hit-dt);
@@ -1038,7 +1042,7 @@ class World{
   // кнопки
   for(const bt of this.buttons) if(!bt.on&&Math.hypot(s.x-bt.x,s.y-bt.y)<16){ bt.on=true; for(const o of this.solids) if(o.type==='d'&&o.arg===bt.id) o.alive=false; this.ev.push(['button',bt.x,bt.y]); }
   // губка: вода как батут
-  if(wat&&this.has('sponge')&&s.vy>0){ s.vy=-Math.max(s.vy*.95,330*K); s.y=wat[1]-1; this.ev.push(['boing',s.x,s.y,null]); }
+  if(wat&&this.has('sponge')&&s.vy>0){ s.vy=-(this.L.hz?Math.max(s.vy*.86,330*K):Math.max(s.vy*.95,330*K)); /* 5.1.1: в Гибридариуме высокие падения — отскоки быстро гаснут до обычных */ s.y=wat[1]-1; this.ev.push(['boing',s.x,s.y,null]); }
   for(const o of this.allSolids()){ const c=circRect(s.x,s.y,R,o.x,o.y,o.w,o.h); if(!c) continue; if(o.arg==='shaft'&&main) this.s3bad=1; if(o.type==='o'&&!(c.ny<-.6&&s.vy*s.gs>=0&&s.y<o.y)) continue; if(o.type==='h'&&HZG(o.arg)&&!this.keyOK(o.arg)&&main&&!this.geneHint&&o.arg!=='glass'){ this.geneHint=1; this.ev.push(['genebump',o.x+o.w/2,o.y,o.arg.slice(5)]); } if(o.type==='h'&&o.arg!=='shell'&&!HZG(o.arg)&&!this.keyOK(o.arg)&&main&&!this.secHint){ this.secHint=1; this.ev.push(['secbump',o.x+o.w/2,o.y]); } if(o.type==='h'&&o.arg!=='shell'&&o.arg!=='glass'&&this.keyOK(o.arg)){ o.alive=false; this.ev.push([HZG(o.arg)?'gene':'secret',o.x+o.w/2,o.y+o.h/2,o]); continue; }
    if(s.ghost>0&&o.type!=='h'&&!(o.type==='c'&&o.arg==='lab')&&!(c.ny<-.6&&c.pen<8&&o.type!=='s')){ if(main&&!s.gp){ s.gp=1; this.ev.push(['ghostpass',s.x,s.y]); } continue; }
    if(o.type==='s'&&!ch.spiky&&!(s.inv>0)){
@@ -1823,7 +1827,7 @@ function drawReveal(){ const r=reveal; if(!r){ scene='menu'; return; } r.t+=1/60
  const yy=cy+80; if(r.kind==='hyb'){ const [a,b]=c.fuse; T(CHARS[a].name+' + '+CHARS[b].name,cx,yy,12,'#e8dcff'); const PLs=wrapTxt(c.perk,11,W-32); PLs.forEach((ln,i)=>T(ln,cx,yy+18+i*14,11,c.col)); var rvExtra=(PLs.length-1)*14; T('открыт навсегда • гибридов: '+hybPairs().length+' из '+hybAll().length,cx,yy+36+rvExtra,10,'#7affe0'); }
  else { T(c.perk+': '+c.desc,cx,yy,11,'#ffd23c'); T('теперь живёт среди всех слизней',cx,yy+18,10,'#e8dcff'); }
  const bw=Math.min(150,(W-36)/2|0), by=Math.min(H-tp-16,yy+64+(typeof rvExtra==='number'?rvExtra:0));
- if(r.kind==='hyb'){ btn(cx-bw-6,by,bw,tp,'ИГРАТЬ',()=>{ sfx('tap'); reveal=null; scene='levels'; },'#4ed05a',15); buttons[buttons.length-1].label='rv_play'; btn(cx+6,by,bw,tp,'КОЛЛЕКЦИЯ',()=>{ sfx('tap'); reveal=null; selTab=1; selPage=0; save.hybNew=0; scene='select'; },'#2ab0a0',13); buttons[buttons.length-1].label='rv_col'; }
+ if(r.kind==='hyb'){ btn(cx-bw-6,by,bw,tp,'ИГРАТЬ',()=>{ sfx('tap'); reveal=null; hzAfterFuse(r); },'#4ed05a',15); buttons[buttons.length-1].label='rv_play'; btn(cx+6,by,bw,tp,'КОЛЛЕКЦИЯ',()=>{ sfx('tap'); reveal=null; selTab=1; selPage=0; save.hybNew=0; scene='select'; },'#2ab0a0',13); buttons[buttons.length-1].label='rv_col'; }
  else { btn(cx-bw-6,by,bw,tp,'ВЫБРАТЬ',()=>{ sfx('tap'); reveal=null; selectSecret(); selTab=0; selPage=1; scene='select'; },'#ffb03c',15); buttons[buttons.length-1].label='rv_pick'; btn(cx+6,by,bw,tp,'ПОТОМ',()=>{ sfx('tap'); reveal=null; scene='menu'; initMenuSlugs(); },'#6a4fd8',13); buttons[buttons.length-1].label='rv_later'; }
  for(const p of parts){ ctx.fillStyle=p.c; ctx.fillRect(p.x+ox|0,p.y+oy|0,p.s,p.s); } }
 let lvlPageInit=false;
