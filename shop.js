@@ -490,6 +490,7 @@ const CAT=[
   '.oooo...oooo.'],{gl:1,lens:['#8a92a8','#1e6a4a','#9affc8'],eye:['..ooo..','.oaaao.','oacbbao','oabbbao','oabbbao','.oaaao.','..ooo..'],epal:{a:'#8a92a8',b:'rgba(30,106,74,.85)',c:'#9affc8'},season:'hz',gift:1,hz:1}),
  N('hzbee','Пчелиный шарфик',0,{kind:'scarf',c:['#ffd23c','#1a0c22'],sh:'#c89a10',season:'hz',gift:1,hz:1}),
  SP('hzgum','Жвачный пузырь',0,{fx:'gumbub',season:'hz',gift:1,hz:1}),
+ VO('hzarp','Арпеджио',0,{snd:'arp',season:'hz',gift:1,hz:1}),
  // ---- Рамки (6): карточка выбора, бестиарий, гардероб
  FR('frwood','Деревянная',40,{fr:'wood'}), FR('frsilver','Серебряная',90,{fr:'silver'}), FR('frneon','Неоновая',90,{fr:'neon'}), FR('frjelly','Мармеладная',90,{fr:'jelly'}), FR('frgold','Золотая',150,{fr:'gold'}), FR('frlegend','Неделька-легенда',180,{fr:'gold',chest:1}), FR('frweek','Гибрид недели',180,{fr:'week',chest:1}),
 ];
@@ -656,6 +657,7 @@ function splat(x,y){ const cz=cosGet(); if(!cz.splat) return; const it=BY[cz.spl
 const VOX={
  hurray:()=>{ tone(523,.07,'square',.14); tone(659,.07,'square',.14,0,.07); tone(784,.07,'square',.14,0,.14); tone(1046,.16,'square',.16,1.06,.21); },
  quack:()=>{ tone(360,.11,'sawtooth',.16,.6); noise(.06,.08,1800); tone(330,.13,'sawtooth',.15,.55,.16); },
+ arp:()=>{ [523,659,784,1046,1319,1046,784].forEach((f,i)=>tone(f,.06,'triangle',.16,1,i*.05)); },
  yodel:()=>{ [440,660,440,660,880].forEach((f,i)=>tone(f,.07,'triangle',.18,1,i*.07)); },
  riff:()=>{ tone(196,.11,'sawtooth',.13); tone(294,.11,'sawtooth',.08); tone(233,.1,'sawtooth',.13,1,.11); tone(262,.17,'sawtooth',.14,.94,.22); noise(.05,.06,4000,.22); },
  riff2:()=>{ [[196,0],[247,.08],[294,.16],[392,.24]].forEach(([f,d])=>tone(f,.1,'sawtooth',.13,1,d)); tone(370,.16,'sawtooth',.14,1.06,.32); noise(.05,.06,4000,.32); },
