@@ -491,6 +491,7 @@ const CAT=[
  N('hzbee','Пчелиный шарфик',0,{kind:'scarf',c:['#ffd23c','#1a0c22'],sh:'#c89a10',season:'hz',gift:1,hz:1}),
  SP('hzgum','Жвачный пузырь',0,{fx:'gumbub',season:'hz',gift:1,hz:1}),
  VO('hzarp','Арпеджио',0,{snd:'arp',season:'hz',gift:1,hz:1}),
+ FT('hzrobo','Тапки «Роботы»',0,{m:'#8a92a8',d:'#5a6278',r:'#ff4a2a',y:'#ffd23c'},['.oooo....','omddmo...','omrmmmo..','ommmmmmo.','oyoyoyoyo','ooooooooo'],{season:'hz',gift:1,hz:1}),
  // ---- Рамки (6): карточка выбора, бестиарий, гардероб
  FR('frwood','Деревянная',40,{fr:'wood'}), FR('frsilver','Серебряная',90,{fr:'silver'}), FR('frneon','Неоновая',90,{fr:'neon'}), FR('frjelly','Мармеладная',90,{fr:'jelly'}), FR('frgold','Золотая',150,{fr:'gold'}), FR('frlegend','Неделька-легенда',180,{fr:'gold',chest:1}), FR('frweek','Гибрид недели',180,{fr:'week',chest:1}),
 ];
