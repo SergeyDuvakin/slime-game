@@ -1,5 +1,5 @@
 'use strict';
-window.__ASSET_V='5.3.1';
+window.__ASSET_V='5.3.2';
 /* FB14: долгое нажатие — без выделения текста, лупы и контекстного меню (Telegram WebView / iOS / Android); поля ввода не трогаем */
 (()=>{ const editable=t=>!!(t&&t.closest&&t.closest('input,textarea,select,[contenteditable]')); const stop=e=>{ if(!editable(e.target)) e.preventDefault(); };
  ['contextmenu','selectstart','dragstart','gesturestart'].forEach(k=>document.addEventListener(k,stop,{passive:false,capture:true}));
@@ -10,6 +10,7 @@ window.__ASSET_V='5.3.1';
 (()=>{
 const K=4/3; let LW=320, LH=588; const R=13, RB=13, MAXDRAG=104, G0=620*K;
 // Ф1м (ТЗ 26.9.6 + 26.10.11): магнит Медка — захват насовсем, разгон, радиус +бонус за скорость. Скорости/радиусы ×K
+const HZ_PICK=1.5, HZ_GOALX=19; /* hz_ease 29.10 */
 const MAG={EASE:7,R0:40,RBK:.02,RBMAX:12,V0:60,ACC:700,VMAX:650,MARGIN:50,PICK:17,RESET_T:.25,TRAIL:6,POP_GAP:.06};
 const SPLAT_V=470*K;
 const CHARS=[
@@ -1182,7 +1183,7 @@ class World{
    /* FB12: лента/платформа не затаскивает слизня в шипы — упирается у края */ if((s.x!==ox0||s.y!==oy0)&&!this.ch.spiky&&this.touchSpike(s.x,s.y)&&!this.touchSpike(ox0,oy0)){ s.x=ox0; if(!s.ground||!s.ground.mover) s.y=oy0; }
    if(s.x<R) s.x=R; if(s.x>LW-R) s.x=LW-R;
    if(!this.support(s)) { s.st='fly'; s.vx=0; s.vy=0; s.fly=0; s.used=true; s.hist=[]; }
-   const g1=this.L.goal; if(main&&!this.goalLock()&&s.st==='idle'&&Math.abs(s.x-g1[0])<14&&s.y>g1[1]-36&&s.y<g1[1]+2){ s.st='win'; s.at=0; this.result='win'; this.ev.push(['win']); return; } }
+   const g1=this.L.goal; if(main&&!this.goalLock()&&s.st==='idle'&&Math.abs(s.x-g1[0])<(this.L&&this.L.need?HZ_GOALX:14)&&s.y>g1[1]-36&&s.y<g1[1]+2){ s.st='win'; s.at=0; this.result='win'; this.ev.push(['win']); return; } }
   if((s.st==='splat'||s.st==='recover')&&s.ground&&s.ground.mover){ s.x+=s.ground.dx; s.y+=s.ground.dy; }
   if(s.st==='poof'){ s.at-=dt; if(s.at<=0){ /* FB12: после шипов — всегда на старт уровня + 0.6 с неуязвимости */ s.x=this.L.start[0]; s.y=this.L.start[1]; s.lx=s.x; s.ly=s.y; s.inv=.6; s.vx=s.vy=0; s.st='idle'; s.ground=null; s.wall=false; s.hover=false; this.ev.push(['respawn']); } return; }
   if(s.st!=='fly') return;
@@ -1248,9 +1249,10 @@ class World{
    s.bumpN++; if(s.bumpN<=6){ s.vx+=nx*140*K; s.vy+=ny*140*K; const sp=Math.hypot(s.vx,s.vy); if(sp<360*K){s.vx*=360*K/sp;s.vy*=360*K/sp;} } else { s.vx*=.7; s.vy*=.7; }
    b.hit=.25; this.ev.push(['bumper',b.x,b.y,b]); } }
   if(s.pcd<=0) for(const p of this.portals){ for(let k=0;k<2;k++){ const ax=p[k*2],ay=p[k*2+1]; if(Math.hypot(s.x-ax,s.y-ay)<13){ if(p[4]){ if(s.ghost>0) continue; if(!hzColors(this.ch).includes(p[4])){ const d=Math.hypot(s.x-ax,s.y-ay)||1, nx=(s.x-ax)/d, ny=(s.y-ay)/d, vn=s.vx*nx+s.vy*ny; s.x=ax+nx*13.5; s.y=ay+ny*13.5; if(vn<0){ s.vx=(s.vx-2*vn*nx)*.6; s.vy=(s.vy-2*vn*ny)*.6; } s.pcd=.15; this.ev.push(['cpno',ax,ay,p[4]]); break; } } const bx=p[2-k*2],by=p[3-k*2]; if(p[4]) (this.ptUse=this.ptUse||[]).push([s===this.s?0:1,p[4]]); this.ev.push(['portal',ax,ay,bx,by]); s.x=bx; s.y=by; s.pcd=.6; break; } } }
-  for(const c of this.candies) if(!c.got&&Math.hypot(s.x-c.x,s.y-c.y)<MAG.PICK*HK) this.pickCandy(c,c.cap);
+  const HZE=this.L&&this.L.need?1:0; /* hz_ease: в Гибридариуме конфета и банка чуть «шире» */
+  for(const c of this.candies) if(!c.got&&Math.hypot(s.x-c.x,s.y-c.y)<MAG.PICK*HK*(HZE?HZ_PICK:1)) this.pickCandy(c,c.cap);
   if(this.gem&&!this.gem.got&&Math.hypot(s.x-this.gem.x,s.y-this.gem.y)<17*HK){ this.gem.got=true; this.ev.push(['gem',this.gem.x,this.gem.y]); }
-  const g0=this.L.goal; if(!this.goalLock()&&Math.abs(s.x-g0[0])<14*HK&&s.y>g0[1]-36&&s.y<g0[1]+2){ if(!main){ this.s.x=s.x; this.s.y=s.y; this.s.vx=this.s.vy=0; this.clone=null; } const m=this.s; m.st='win'; m.at=0; m.vx=m.vy=0; this.result='win'; this.ev.push(['win']); return; }
+  const g0=this.L.goal; if(!this.goalLock()&&Math.abs(s.x-g0[0])<(HZE?HZ_GOALX:14)*HK&&s.y>g0[1]-36&&s.y<g0[1]+2){ if(!main){ this.s.x=s.x; this.s.y=s.y; this.s.vx=this.s.vy=0; this.clone=null; } const m=this.s; m.st='win'; m.at=0; m.vx=m.vy=0; this.result='win'; this.ev.push(['win']); return; }
   // отдых
   if(s.zone){ const zn=s.zone; const slow=Math.abs(s.vy)<6*K&&Math.abs(s.vx)<10*K; s.stillT=slow?(s.stillT||0)+dt:0; if((Math.abs(s.y-zn.ty)<1&&slow)||s.stillT>.35||s.zoneT>6){ if(main){ if(Math.abs(zn.ty-s.y)<1) s.y=zn.ty; this.settle(s,zn.k==='water'?'water':'hover'); } else s.st='dead'; return; } }
   else if(wat&&!this.has('sponge')&&Math.hypot(s.vx,s.vy)<35*K&&s.fly>.4){ if(main) this.settle(s,'water'); else s.st='dead'; return; }
