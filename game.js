@@ -1,5 +1,5 @@
 'use strict';
-window.__ASSET_V='5.3.5';
+window.__ASSET_V='5.3.6';
 /* FB14: долгое нажатие — без выделения текста, лупы и контекстного меню (Telegram WebView / iOS / Android); поля ввода не трогаем */
 (()=>{ const editable=t=>!!(t&&t.closest&&t.closest('input,textarea,select,[contenteditable]')); const stop=e=>{ if(!editable(e.target)) e.preventDefault(); };
  ['contextmenu','selectstart','dragstart','gesturestart'].forEach(k=>document.addEventListener(k,stop,{passive:false,capture:true}));
@@ -913,8 +913,9 @@ function drawDark(w){ const D=w.L.dk; if(!D||!D.length) return; if(w.eelFlash) r
 /* С8 Ворона-воришка: ['crow',x,y,{nest:[nx,ny],wait:2.5}] */
 CR.crow={ r:8, ghostPass:true,
  step(c,w,dt){ const P=c.p, st=c.st; if(!st.m){ st.m='sit'; st.n=0; st.aim=0; } const nest=P.nest||[c.x0,c.y0];
+  if(P.scare&&!st.scared&&(st.m==='sit'||st.m==='go')&&w.s.st==='fly'&&Math.hypot(w.s.x-c.x,w.s.y-c.y)<P.scare*K){ if(st.m==='go'){ const cd=w.candies[st.ci]; if(cd) cd.crow=0; } st.scared=true; st.m='home'; w.crowScare=1; w.ev.push(['crowdrop',c.x,c.y]); } /* hz_ease п5: ворону пугает пролёт рядом (ур.48) */
   const aiming=w.aiming||(typeof drag!=='undefined'&&drag&&world===w&&w.s.st==='idle'); if(aiming) st.aim+=dt; else { st.aim=0; st.once=false; }
-  if(st.m==='sit'){ c.x=c.x0; c.y=c.y0; st.kar=st.aim>1.5&&!w.has('hush')&&st.n<2&&!st.once; if(st.aim>(P.wait||2.5)&&!w.has('hush')&&st.n<2&&!st.once){ const s=w.s; let best=-1,bd=1e9; w.candies.forEach((cd,i)=>{ if(cd.got||cd.cap||cd.crow) return; if(w.has('magnet')&&Math.hypot(cd.x-s.x,cd.y-s.y)<64) return; const d=Math.hypot(cd.x-c.x0,cd.y-c.y0); if(d<bd){ bd=d; best=i; } }); if(best>=0){ st.m='go'; st.ci=best; st.t0=w.t; st.n++; st.once=true; w.stolen=1; w.candies[best].crow=1; w.ev.push(['crow',c.x0,c.y0]); } } }
+  if(st.m==='sit'){ c.x=c.x0; c.y=c.y0; st.kar=st.aim>1.5&&!w.has('hush')&&st.n<2&&!st.once; if(st.aim>(P.wait||2.5)&&!w.has('hush')&&st.n<2&&!st.once&&!st.scared){ const s=w.s; let best=-1,bd=1e9; w.candies.forEach((cd,i)=>{ if(cd.got||cd.cap||cd.crow) return; if(w.has('magnet')&&Math.hypot(cd.x-s.x,cd.y-s.y)<64) return; const d=Math.hypot(cd.x-c.x0,cd.y-c.y0); if(d<bd){ bd=d; best=i; } }); if(best>=0){ st.m='go'; st.ci=best; st.t0=w.t; st.n++; st.once=true; w.stolen=1; w.candies[best].crow=1; w.ev.push(['crow',c.x0,c.y0]); } } }
   else if(st.m==='go'||st.m==='carry'){ const cd=w.candies[st.ci]; if(!cd||cd.got){ st.m='home'; return; } const tx=st.m==='go'?cd.x:nest[0], ty=st.m==='go'?cd.y-6:nest[1]-6; const dx=tx-c.x, dy=ty-c.y, d=Math.hypot(dx,dy), v=st.m==='go'?320*K:(st.cv||60*K);
    if(d<4){ if(st.m==='go'){ st.m='carry'; st.tc=w.t; st.cv=Math.max(60*K,Math.hypot(nest[0]-c.x,nest[1]-c.y)/1.2); } else { cd.x=nest[0]; cd.y=nest[1]; cd.x0=cd.x; cd.y0=cd.y; cd.crow=0; st.m='home'; } } else { c.x+=dx/d*Math.min(d,v*dt); c.y+=dy/d*Math.min(d,v*dt); } if(st.m==='carry'){ cd.x=c.x; cd.y=c.y+8; } }
   else if(st.m==='home'||st.m==='drop'){ if(st.m==='drop'){ const cd=w.candies[st.ci]; if(cd&&!cd.got){ st.vy=(st.vy||0)+600*K*dt; cd.y+=st.vy*dt; for(const o of w.allSolids()){ if(o.type==='s'||o.type==='o') continue; if(cd.x>o.x&&cd.x<o.x+o.w&&cd.y+5>o.y&&cd.y<o.y+o.h){ cd.y=o.y-6; cd.x0=cd.x; cd.y0=cd.y; cd.crow=0; st.m='home'; st.vy=0; break; } } if(cd.y>LH-6){ cd.y=LH-6; cd.x0=cd.x; cd.y0=cd.y; cd.crow=0; st.m='home'; } } else st.m='home'; }
