@@ -1,5 +1,5 @@
 'use strict';
-window.__ASSET_V='5.3.0';
+window.__ASSET_V='5.3.1';
 /* FB14: долгое нажатие — без выделения текста, лупы и контекстного меню (Telegram WebView / iOS / Android); поля ввода не трогаем */
 (()=>{ const editable=t=>!!(t&&t.closest&&t.closest('input,textarea,select,[contenteditable]')); const stop=e=>{ if(!editable(e.target)) e.preventDefault(); };
  ['contextmenu','selectstart','dragstart','gesturestart'].forEach(k=>document.addEventListener(k,stop,{passive:false,capture:true}));
@@ -615,11 +615,14 @@ function hzDecor(x,L,th){ const ch=L.ch|0, D=HZ_DECOR[ch]||HZ_DECOR[0], rnd=hzRn
  const free=(X,Y,w,h)=>!(L.p||[]).some(o=>X<o[0]+o[2]&&X+w>o[0]&&Y<o[1]+o[3]&&Y+h>o[1])&&Math.hypot(X+w/2-L.start[0],Y+h/2-L.start[1])>40&&Math.hypot(X+w/2-L.goal[0],Y+h/2-L.goal[1])>50;
  // дальний план: крупные силуэты
  x.save(); x.globalAlpha=.55; const bc=th.mid||'#222', bh=th.far||'#333'; for(let i=0;i<5;i++){ const k=D.back[i%D.back.length], bx=20+rnd()*(W-60), by=140+rnd()*(H-260), sc=1.4+rnd()*.9; hzProp(x,k,bx,by,sc,bc,bh,dk,rnd); } x.restore();
+ /* 5.4-decor: подвесы и реквизит — фон, а не предметы: рисуем в отдельный слой, тонируем к th.mid (без ярких заливок/бликов), кладём с alpha .5, масштаб 1.0 */
+ const [dcv,dx]=mk(W,H);
  // подвесы с потолка
- for(let i=0;i<3;i++){ const k=D.hang[0], hx=30+rnd()*(W-60), hl=30+rnd()*70; if(free(hx-6,0,12,hl+14)) hzProp(x,k,hx,hl,1,ac,ac2,dk,rnd); }
+ for(let i=0;i<3;i++){ const k=D.hang[0], hx=30+rnd()*(W-60), hl=30+rnd()*70; if(free(hx-6,0,12,hl+14)) hzProp(dx,k,hx,hl,1,ac,ac2,dk,rnd); }
  // реквизит на полах и полках
  const surf=(L.p||[]).filter(o=>(o[4]==='g'||o[4]==='h'&&o[5]==='glass')&&o[2]>=36&&o[1]>40).map(o=>[o[0],o[1],o[2]]);
- for(const [sx,sy,sw] of surf){ const n=sw>200?4:sw>90?2:1; for(let j=0;j<n;j++){ if(rnd()<.15) continue; const k=D.ground[(rnd()*D.ground.length)|0], px=sx+8+rnd()*Math.max(1,sw-16); if(!free(px-9,sy-26,18,25)) continue; hzProp(x,k,px,sy,1.5,ac,ac2,dk,rnd); } } }
+ for(const [sx,sy,sw] of surf){ const n=sw>200?4:sw>90?2:1; for(let j=0;j<n;j++){ if(rnd()<.15) continue; const k=D.ground[(rnd()*D.ground.length)|0], px=sx+8+rnd()*Math.max(1,sw-16); if(!free(px-9,sy-26,18,25)) continue; hzProp(dx,k,px,sy,1,ac,ac2,dk,rnd); } }
+ dx.save(); dx.globalCompositeOperation='source-atop'; dx.globalAlpha=.6; dx.fillStyle=th.mid||'#222'; dx.fillRect(0,0,W,H); dx.restore(); x.save(); x.globalAlpha=.5; x.drawImage(dcv,0,0); x.restore(); }
 function hzProp(x,k,X,Y,sc,c1,c2,dk,rnd){ const R=(a,b,w,h,c)=>{ x.fillStyle=c; x.fillRect(Math.round(X+a*sc),Math.round(Y+b*sc),Math.max(1,Math.round(w*sc)),Math.max(1,Math.round(h*sc))); };
  switch(k){
  case 'flask': R(-2,-20,4,6,dk); R(-6,-14,12,14,dk); R(-5,-13,10,12,'#c8f0ff'); R(-5,-7,10,6,'#7affa0'); R(-3,-12,2,3,'#fff'); break;
