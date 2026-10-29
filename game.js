@@ -1,5 +1,5 @@
 'use strict';
-window.__ASSET_V='5.3.3';
+window.__ASSET_V='5.3.4';
 /* FB14: долгое нажатие — без выделения текста, лупы и контекстного меню (Telegram WebView / iOS / Android); поля ввода не трогаем */
 (()=>{ const editable=t=>!!(t&&t.closest&&t.closest('input,textarea,select,[contenteditable]')); const stop=e=>{ if(!editable(e.target)) e.preventDefault(); };
  ['contextmenu','selectstart','dragstart','gesturestart'].forEach(k=>document.addEventListener(k,stop,{passive:false,capture:true}));
@@ -472,6 +472,7 @@ function hzAfterFuse(r){ const back=hzBackFuse, lv=hzMakeLv; hzBackFuse=false; h
  scene='levels'; } const PCtap=k=>!!CHARS.find(c=>c.ab===k&&c.tap);
 /* ---- запуск/выход ---- */
 function hzStart(i){ hzLevels(); LV=HZL; hzRun={i,ch:Math.floor(i/10)}; const z=hzS(); z.last=i; startLevel(i); }
+function hzToMapNext(){ const nx=curLevel+1, n=LV.length; hzLeave(); if(nx<n&&hzLvOpen(nx)){ hzCh=Math.floor(nx/10); const z=hzS(); z.last=nx; hzCard={i:nx,t0:now}; } else hzCh=Math.floor(curLevel/10); }
 function hzLeave(){ LV=LV0; hzRun=null; hzCh=hzCh<0?-1:hzCh; scene='hzmap'; }
 function hzS3(L,w){ const c=L.s3; if(!c) return false; if(nastya&&(c.k==='shots'||c.k==='bossn')) return false; const used=w.used|0;
  switch(c.k){ case 'shots': return used<=c.n; case 'allc1': return w.got>=3&&used<=1; case 'combo': return (w.comboMax||0)>=c.n; case 'boss': return !!w.bossDown||!!(w.boss&&w.boss.dead); case 'bossn': return (!!w.bossDown||!!(w.boss&&w.boss.dead))&&used<=c.n; case 'keep': return w.has('shield')&&w.shield>0; case 'nowall': return (w.s3bad|0)<=(c.n|0); case 'jok': return w.solids.filter(o=>o.type==='j').every(o=>!o.shT&&o.hp>=o.hp0-1); case 'pig': return !w.pigN; case 'ledge': return !w.s3bad; case 'bub2': return (w.bubN|0)===3; case 'hogall': return (w.hogT||0)>=2; case 'nohog': return !w.hogHit; case 'nomg': return !w.mgT; case 'nosting': return !w.stung; case 'half2': return ((w.fsBits|0)&3)===3; case 'nocrow': return !w.stolen; case 'nozap': return !w.zapN; case 'srt2': return !!w.spread; case 'all3': return w.got>=3; case 'twinp': { const u=w.ptUse||[]; const A=u.filter(e=>e[0]===0).map(e=>e[1]), B=u.filter(e=>e[0]===1).map(e=>e[1]); return A.some(a=>B.some(b=>b!==a)); } case 'bugall': { const B=w.crList().filter(c=>c.type==='bug'); return B.length>0&&B.every(c=>{ const cd=w.candies[c.p.k|0]; return cd&&cd.got; }); } case 'nobadnote': return !!w.melDone&&(w.melBad|0)<=(c.n|0); case 'crowback': return !!w.crowBack; case 'crowscare': return !!w.crowScare||(!!c.n&&!!w.crowBack); case 'gumall': { const G=w.crList().filter(c=>c.type==='gum'); return G.length>0&&G.filter(g=>(g.st.mt||[]).length>0).length>=Math.max(1,G.length-(c.n|0)); } default: return false; } }
@@ -2002,7 +2003,7 @@ function drawReveal(){ const r=reveal; if(!r){ scene='menu'; return; } r.t+=1/60
  else { T(c.perk+': '+c.desc,cx,yy,11,'#ffd23c'); T('теперь живёт среди всех слизней',cx,yy+18,10,'#e8dcff'); }
  const bw=Math.min(150,(W-36)/2|0), by=Math.min(H-tp-16,yy+64+(typeof rvExtra==='number'?rvExtra:0));
  if(r.kind==='hyb'){ btn(cx-bw-6,by,bw,tp,'ИГРАТЬ',()=>{ sfx('tap'); reveal=null; hzAfterFuse(r); },'#4ed05a',15); buttons[buttons.length-1].label='rv_play'; btn(cx+6,by,bw,tp,'КОЛЛЕКЦИЯ',()=>{ sfx('tap'); reveal=null; selTab=1; selPage=0; save.hybNew=0; scene='select'; },'#2ab0a0',13); buttons[buttons.length-1].label='rv_col'; }
- else { btn(cx-bw-6,by,bw,tp,'ВЫБРАТЬ',()=>{ sfx('tap'); reveal=null; selectSecret(r.ch.id); selTab=0; selPage=r.ch.id==='slugX'?1:Math.floor((23+SEC7.findIndex(q=>q.id===r.ch.id))/12); scene='select'; },'#ffb03c',15); buttons[buttons.length-1].label='rv_pick'; btn(cx+6,by,bw,tp,'ПОТОМ',()=>{ sfx('tap'); reveal=null; scene='menu'; initMenuSlugs(); },'#6a4fd8',13); buttons[buttons.length-1].label='rv_later'; }
+ else { btn(cx-bw-6,by,bw,tp,'ВЫБРАТЬ',()=>{ sfx('tap'); reveal=null; selectSecret(r.ch.id); selTab=0; selPage=r.ch.id==='slugX'?1:Math.floor((23+SEC7.findIndex(q=>q.id===r.ch.id))/12); scene='select'; },'#ffb03c',15); buttons[buttons.length-1].label='rv_pick'; btn(cx+6,by,bw,tp,'ПОТОМ',()=>{ sfx('tap'); reveal=null; scene=r.from==='hzmap'?'hzmap':'menu'; initMenuSlugs(); },'#6a4fd8',13); buttons[buttons.length-1].label='rv_later'; /* 5.3.4: из ГЗ — назад на карту */ }
  for(const p of parts){ ctx.fillStyle=p.c; ctx.fillRect(p.x+ox|0,p.y+oy|0,p.s,p.s); } }
 let lvlPageInit=false;
 function drawLevels(){ drawBG(2,0,now); swipePager=null; const tp=TAP(); iconBtn(4,4,icBack,()=>goBack(),'back');
@@ -2051,7 +2052,7 @@ function drawOverlay(){ const k=Math.min(1,overlayT*4); if(overlay.k!=='grafview
   else if(curLevel===LV.length-1&&!chaosRun) T('Все уровни пройдены!',W/2,ly+2,11,'#ffd23c');
   const byy0=py+ph-tp-10; const wv=i=>{ if(RM()) return 0; const f=Math.max(0,Math.min(1,(overlayT-(overlay.wave||0)-i*.05)/.2)); return Math.round(10*(1-EASE.outBack(f,1.6))); }; let byy=byy0+wv(0);
   if(chaosRun){ btn(px+12,byy,pw-24,tp,'ДАЛЬШЕ',()=>{sfx('tap');chaosNext();},'#4ed05a',15); return; }
-  if(hzRun){ btn(px+12,byy,bw,tp,'ЕЩЁ',()=>{sfx('tap');startLevel(curLevel);},'#6a4fd8',15); byy=byy0+wv(1); const nx=curLevel+1; if(nx%10!==0&&nx<LV.length&&hzLvOpen(nx)) btn(px+pw-12-bw,byy,bw,tp,'ДАЛЬШЕ',()=>{sfx('tap');startLevel(nx);},'#4ed05a',15); else btn(px+pw-12-bw,byy,bw,tp,'КАРТА',()=>{sfx('tap');overlay=null;hzLeave();},'#4ed05a',15); return; }
+  if(hzRun){ btn(px+12,byy,bw,tp,'ЕЩЁ',()=>{sfx('tap');startLevel(curLevel);},'#6a4fd8',15); byy=byy0+wv(1); btn(px+pw-12-bw,byy,bw,tp,'К КАРТЕ',()=>{sfx('tap');overlay=null;hzToMapNext();},'#4ed05a',15); return; } /* 5.3.4: после победы в ГЗ — всегда на карту, гибрид под следующий уровень другой */
   btn(px+12,byy,bw,tp,'ЕЩЁ',()=>{sfx('tap');startLevel(curLevel);},'#6a4fd8',15); byy=byy0+wv(1);
   if(curLevel<LV.length-1) btn(px+pw-12-bw,byy,bw,tp,'ДАЛЬШЕ',()=>{sfx('tap');startLevel(curLevel+1);},'#4ed05a',15); else btn(px+pw-12-bw,byy,bw,tp,'МЕНЮ',()=>{sfx('tap');scene='menu';tgBack(false);},'#4ed05a',15);
  } else { T(overlay.phrase,W/2,py+12,16,['#fff','#ff8fc8']); drawSlug(PC().id,'splat',5,W/2,py+62); T(overlay.sub||'Броски кончились. Ещё разок?',W/2,py+84,11,'#e8d8ff');
