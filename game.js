@@ -1,5 +1,5 @@
 'use strict';
-window.__ASSET_V='5.3.4';
+window.__ASSET_V='5.3.5';
 /* FB14: долгое нажатие — без выделения текста, лупы и контекстного меню (Telegram WebView / iOS / Android); поля ввода не трогаем */
 (()=>{ const editable=t=>!!(t&&t.closest&&t.closest('input,textarea,select,[contenteditable]')); const stop=e=>{ if(!editable(e.target)) e.preventDefault(); };
  ['contextmenu','selectstart','dragstart','gesturestart'].forEach(k=>document.addEventListener(k,stop,{passive:false,capture:true}));
@@ -137,9 +137,15 @@ function tgInit(){ if(!tg) return;
  try{tg.ready();}catch(e){} try{tg.expand();}catch(e){}
  try{ if(tg.isVersionAtLeast&&tg.isVersionAtLeast('7.7')) tg.disableVerticalSwipes(); }catch(e){}
  try{ if(tg.isVersionAtLeast&&tg.isVersionAtLeast('6.1')){tg.setHeaderColor('#1a1030');tg.setBackgroundColor('#1a1030');} }catch(e){}
- try{ if(tg.isVersionAtLeast&&tg.isVersionAtLeast('6.1')) tg.BackButton.onClick(()=>goBack()); }catch(e){}
+ try{ if(tg.isVersionAtLeast&&tg.isVersionAtLeast('6.1')) tg.BackButton.onClick(tgBackH); }catch(e){} try{ tg.onEvent&&tg.onEvent('activated',()=>tgRebind()); }catch(e){} /* 5.3.5: после блокировки экрана — перепривязка */
 }
-function tgBack(show){ if(!inTG) return; try{ if(tg.isVersionAtLeast('6.1')) show?tg.BackButton.show():tg.BackButton.hide(); }catch(e){} }
+function tgBack(show){ tgBackOn=!!show; if(!inTG) return; try{ if(tg.isVersionAtLeast('6.1')) show?tg.BackButton.show():tg.BackButton.hide(); }catch(e){} }
+/* 5.3.5: «Назад» Telegram переживает сворачивание — обработчик один (tgBackH), видимость сверяется со сценой, после возврата перепривязываем */
+let tgBackOn=false, tgBackT=0; function tgBackH(){ const t=performance.now(); if(t-tgBackT<250) return; tgBackT=t; goBack(); }
+function tgWantBack(){ return scene!=='menu'&&scene!=='cover'; }
+function tgSync(force){ const w=tgWantBack(); if(force||w!==tgBackOn) tgBack(w); }
+function tgRebind(){ if(!inTG) return; try{ if(tg.isVersionAtLeast('6.1')){ tg.BackButton.offClick(tgBackH); tg.BackButton.onClick(tgBackH); } }catch(e){} tgSync(true); }
+setInterval(()=>{ try{ tgSync(false); }catch(e){} },800);
 
 // ---------- audio ----------
 let AC=null, master=null, musicGain=null;
@@ -1762,7 +1768,7 @@ function startLevel(i){ idleT=0; bossLbl=null; impStage=0; bubble=null; if(fusio
  /* FB17: представление босса — табличка над самим боссом (drawBossLabel) */
  if(world.wx){ const nm=WXN[world.wxNow]; floats.push({s:'Погода: '+nm[0],x:LW/2,y:world.boss?236:190,t:0,life:2.4,size:12,col:nm[1]}); }
  if(relay) floats.push({s:'ЭСТАФЕТА: '+relayTeam.map(j=>CHARS[j].name).join(' → '),x:LW/2,y:world.boss?258:212,t:0,life:2.6,size:11,col:'#ffb03c'}); }
-function goBack(){ uiTr.back=true; sfx('tap'); if(scene==='wkchest'){ if(window.WEEK) WEEK.chest=null; scene='quests'; return; } if(scene==='play'&&chaosRun){ chaosEnd(); return; } if(scene==='play'&&hzRun){ overlay=null; hzLeave(); return; } if(scene==='hzmap'){ if(hzCard){ hzCard=null; return; } scene='menu'; tgBack(false); return; } if(scene==='hzintro'){ hzIntroEnd(); return; } if(scene==='fuse'&&hzBackFuse){ hzBackFuse=false; scene='hzmap'; return; } if(scene==='play'){scene='levels'; relay=null;} else if(scene==='wardrobe'&&window.SHOP&&SHOP.back()){ return; } else if(scene==='fuse'||scene==='wardrobe'){scene='select';} else if(scene==='levels'){ if(relayTeam){ scene='relay'; } else scene='select';} else if(scene==='relay'){ relayTeam=null; scene='menu'; tgBack(false);} else if(scene==='reveal'){ const k=reveal&&reveal.kind; reveal=null; if(k==='hyb'){ selTab=1; scene='select'; } else { scene='menu'; tgBack(false); } } else if(scene==='repair'){ if(!HOME.back()) scene='house'; } else if(scene==='settings'&&bdPick){ bdPick=null; } else if(scene==='select'||scene==='house'||scene==='bestiary'||scene==='quests'||scene==='settings'){ if(scene==='house') houseIn=false; scene='menu'; tgBack(false);} }
+function goBack(){ uiTr.back=true; sfx('tap'); if(scene==='wkchest'){ if(window.WEEK) WEEK.chest=null; scene='quests'; return; } if(scene==='play'&&chaosRun){ chaosEnd(); return; } if(scene==='play'&&hzRun){ overlay=null; hzLeave(); return; } if(scene==='hzmap'){ if(hzCard){ hzCard=null; return; } scene='menu'; tgBack(false); return; } if(scene==='hzintro'){ hzIntroEnd(); return; } if(scene==='fuse'&&hzBackFuse){ hzBackFuse=false; scene='hzmap'; return; } if(scene==='play'){scene='levels'; relay=null; overlay=null;} else if(scene==='wardrobe'&&window.SHOP&&SHOP.back()){ return; } else if(scene==='fuse'||scene==='wardrobe'){scene='select';} else if(scene==='levels'){ if(relayTeam){ scene='relay'; } else scene='select';} else if(scene==='relay'){ relayTeam=null; scene='menu'; tgBack(false);} else if(scene==='reveal'){ const k=reveal&&reveal.kind; reveal=null; if(k==='hyb'){ selTab=1; scene='select'; } else { scene='menu'; tgBack(false); } } else if(scene==='repair'){ if(!HOME.back()) scene='house'; } else if(scene==='settings'&&bdPick){ bdPick=null; } else if(scene==='select'||scene==='house'||scene==='bestiary'||scene==='quests'||scene==='settings'){ if(scene==='house') houseIn=false; scene='menu'; tgBack(false);} }
 function burst(x,y,n,cols,sp=90,up=0,life=.6,g=300){ for(let i=0;i<n;i++){ const a=Math.random()*Math.PI*2, v=sp*(.3+Math.random()); parts.push({x,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v-up,life:life*(.6+Math.random()*.6),t:0,c:cols[i%cols.length],g,s:Math.random()<.3?2:1}); } }
 const COMBO_TXT=['','','ДВОЙНОЙ ШМЯК!','ТРОЙНОЙ ШМЯК!','МЕГАРИКОШЕТ!','УЛЬТРАШМЯК!','ШМЯК-ЛЕГЕНДА!','СЛИЗЕПОКАЛИПСИС!'];
 const COMBO_COL=['','','#7affe0','#4ef0ff','#ffe066','#ff9a1c','#ff5aa8','#ff3a3a'];
@@ -3039,11 +3045,11 @@ function gfxReset(){ bgCache={}; txtCache.clear(); tMeasure.clear(); for(const C
  for(const k in SPR) if(!(SPR[k] instanceof HTMLImageElement)) delete SPR[k]; buildSecretSprite(); if(typeof candyCache==='object') for(const k in candyCache) delete candyCache[k];
  if(world&&lvlCanvas) lvlCanvas=buildLevelCanvas(LV[curLevel],themeOf(curLevel)); probe[1].fillStyle='#f00'; probe[1].fillRect(0,0,2,2); }
 function onHide(){ if(!hiddenAt) hiddenAt=performance.now(); drag=null; pressed=null; swipe=null; if(world) world.slow=false; if(scene==='play'&&world&&!world.result&&!overlay) openPause(); }
-function onResume(){ const away=hiddenAt?performance.now()-hiddenAt:0; hiddenAt=0; resumes++; drag=null; pressed=null; swipe=null;
+function onResume(){ const away=hiddenAt?performance.now()-hiddenAt:0; hiddenAt=0; resumes++; drag=null; pressed=null; swipe=null; try{ bdDrag=null; if(mfl) mfl.drag=null; }catch(e){} tgRebind(); for(const ms of [400,1500]) setTimeout(()=>tgRebind(),ms);
  lastWH=null; resize(); gfxReset(); parts=[]; pops=[]; shake=0; flash=0; last=performance.now(); if(spritesReady&&scene==='menu') initMenuSlugs();
  for(const ms of [50,300,800]) setTimeout(()=>{ if(rescale()) gfxReset(); },ms); return away; }
 document.addEventListener('visibilitychange',()=>{ if(document.hidden) onHide(); else onResume(); });
-window.addEventListener('pagehide',onHide); window.addEventListener('pageshow',e=>{ if(e.persisted) onResume(); });
+window.addEventListener('pagehide',onHide); window.addEventListener('focus',()=>{ if(!document.hidden) tgRebind(); }); window.addEventListener('pageshow',e=>{ if(e.persisted) onResume(); });
 try{ cv.addEventListener('contextlost',e=>{ try{e.preventDefault()}catch(_){} }); cv.addEventListener('contextrestored',()=>{ gfxReset(); }); }catch(e){}
 try{ if(tg&&tg.onEvent){ tg.onEvent('deactivated',onHide); tg.onEvent('activated',()=>{ if(hiddenAt) onResume(); }); } }catch(e){}
 // страховка: если система тихо выкинула память канвасов (проба стала прозрачной) — перестраиваем кэши
