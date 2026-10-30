@@ -1,5 +1,5 @@
 'use strict';
-window.__ASSET_V='5.3.7';
+window.__ASSET_V='5.3.8';
 /* FB14: долгое нажатие — без выделения текста, лупы и контекстного меню (Telegram WebView / iOS / Android); поля ввода не трогаем */
 (()=>{ const editable=t=>!!(t&&t.closest&&t.closest('input,textarea,select,[contenteditable]')); const stop=e=>{ if(!editable(e.target)) e.preventDefault(); };
  ['contextmenu','selectstart','dragstart','gesturestart'].forEach(k=>document.addEventListener(k,stop,{passive:false,capture:true}));
@@ -951,7 +951,7 @@ function drawLabCrate(o){ const x=o.x|0,y=o.y|0,w=o.w,h=o.h; ctx.fillStyle='#1a1
  ctx.fillStyle='#c8d0e0'; for(const [px,py] of [[x+4,y+4],[x+w-5,y+4],[x+4,y+h-5],[x+w-5,y+h-5]]) ctx.fillRect(px,py,1,1);
  /* значок «колючки» по центру: ломать только колючками */ const cx=x+(w>>1), cy=y+(h>>1); ctx.fillStyle='#1a1426'; ctx.fillRect(cx-4,cy-4,9,9); ctx.fillStyle='#62bc34'; ctx.fillRect(cx-3,cy-3,7,7); ctx.fillStyle='#d6ffc4'; ctx.fillRect(cx,cy-5,1,2); ctx.fillRect(cx,cy+4,1,2); ctx.fillRect(cx-5,cy,2,1); ctx.fillRect(cx+4,cy,2,1); ctx.fillStyle='#1a7a3a'; ctx.fillRect(cx-1,cy-1,3,3); }
 /* ---- 5.1 босс главы 1: Колба-Булькотун (BOSS[10]). Плюётся пузырями-ловушками, заживает за 2,2 с — банка открыта, пока он «выдохся». ---- */
-BOSS[10]={id:'flask',intro:'Плюётся пузырями и заживает за 2 с — бей и сразу к банке!',name:'Колба-Булькотун',r:18,ax:0,ay:6,T:2.6,col:'#7affe0',mech:'пузыри-ловушки, заживает за 2 с',say:['Бульк!','Пробка вылетела!','Буль-буль…']};
+BOSS[10]={id:'flask',intro:'Оглушить можно только раздвоившись! Потом 6 с — в банку',name:'Колба-Булькотун',r:18,ax:0,ay:6,T:2.6,col:'#7affe0',mech:'пузыри-ловушки, заживает за 2 с',say:['Бульк!','Пробка вылетела!','Буль-буль…']};
 BOSS[11]={id:'puff',intro:'Раздутая отбивает ×1,4. Бей тяжёлым, пока сдута (1,2 с)!',name:'Рыба-Надувала',r:22,ax:30,ay:8,T:5,col:'#ffb84a',mech:'раздутая отбивает ×1,4, сдутая — уязвима',say:['Пфф!','Сдулась…','Буль-пуф!']};
 const HZP_T=3.4, HZP_D=1.2; /* цикл рыбы: раздута 2,2 с, сдута 1,2 с */
 function hzPuffQ(w,b){ return ((w.t+(b.ph||0))%HZP_T+HZP_T)%HZP_T; }
@@ -1054,7 +1054,7 @@ function drawBeetleBoss(b,x,y,r,hit,mood){ const d=Math.cos(world.t/6*Math.PI*2)
  ctx.restore(); eyes(x+d*(r+1),y-3,3,2,b,mood);
  if(window.world&&0){} const pulse=(t*1.5)%1; ctx.globalAlpha=(1-pulse)*.5; ctx.strokeStyle='#4ef0ff'; ctx.lineWidth=1; ctx.beginPath(); ctx.arc(x,y,r+8+pulse*40,0,7); ctx.stroke(); ctx.globalAlpha=1; }
 const HZB_REV=2.2; /* 5.3.7: окно банки шире (было 1.2 с) */
-function hzBossPre(w,b,dt){ if(b.dead){ if(w.t-(b.deadT||0)>HZB_REV&&!w.result){ b.dead=false; b.gone=0; b.fade=0; b.hp=b.hp0||1; b.react=.4; w.ev.push(['brevive',b.x,b.y]); } }
+function hzBossPre(w,b,dt){ if(b.dead){ if(w.t-(b.deadT||0)>(b.rev||HZB_REV)&&!w.result){ b.dead=false; b.gone=0; b.fade=0; b.hp=b.hp0||1; b.react=.4; w.ev.push(['brevive',b.x,b.y]); } }
  else { b.ballT-=dt; if(b.ballT<=0){ b.ballT=2.2; const s=w.s, dx=s.x-b.x, dy=s.y-b.y, d=Math.hypot(dx,dy)||1; b.balls.push({x:b.x+dx/d*(b.r+4),y:b.y+dy/d*(b.r+4),vx:dx/d*55*K,vy:dy/d*55*K,t:0}); w.ev.push(['bspit',b.x,b.y]); } }
  for(const o of b.balls){ o.t+=dt; o.x+=o.vx*dt; o.y+=o.vy*dt+Math.sin(o.t*5)*.3; } b.balls=b.balls.filter(o=>!o.dead&&o.t<4.5&&o.y>-10&&o.y<LH+10); }
 function hzBossPost(w,b,s,dt){ if(s.trapT>0){ s.trapT-=dt; s.vx*=Math.pow(.05,dt); s.vy=-22*K; if(s.trapT<=0){ s.vy=0; w.ev.push(['bubpop',s.x,s.y]); } return; }
@@ -1277,7 +1277,7 @@ class World{
  }
  // ---------- v4: боссы, погода, наклон, крик ----------
  v4init(){ const L=this.L; const bd=L.boss&&BOSS[L.boss.k];
-  this.boss=bd?{k:L.boss.k,x0:L.boss.x,y0:L.boss.y,x:L.boss.x,y:L.boss.y,r:L.boss.r??bd.r,hp:L.boss.hp||3,hp0:L.boss.hp||3,cd:0,dead:false,react:0,balls:[],ballT:1.2,paw:0,ax:L.boss.ax??bd.ax,ay:L.boss.ay??bd.ay,per:L.boss.per||0,hang:!!L.boss.hang}:null;
+  this.boss=bd?{k:L.boss.k,x0:L.boss.x,y0:L.boss.y,x:L.boss.x,y:L.boss.y,r:L.boss.r??bd.r,hp:L.boss.hp||3,hp0:L.boss.hp||3,cd:0,dead:false,react:0,balls:[],ballT:1.2,paw:0,ax:L.boss.ax??bd.ax,ay:L.boss.ay??bd.ay,per:L.boss.per||0,rev:L.boss.rev||0,cloneOnly:!!L.boss.clone,hang:!!L.boss.hang}:null;
   this.wx=L.wx?{i:0,t:0,warned:false}:null; this.wxNow=L.wx?L.wx[0][0]:''; this.gust=0; }
  setChar(ch){ this.ch=ch; this.ab=ch.ab||''; this.abs=new Set(ch.abs||(ch.ab?[ch.ab]:[])); this.taps=tapList(ch); }
  shout(){ const s=this.s; if(s.st!=='fly'||s.shout||s.eat>0) return false; s.shout=true; s.vx*=1.22; s.vy=s.vy*1.22-50*K; this.ev.push(['shout',s.x,s.y]); return true; }
@@ -1303,7 +1303,7 @@ class World{
   else if(b.k===5){ const v=Math.hypot(s.vx,s.vy); if(v>700*K){ s.vx*=700*K/v; s.vy*=700*K/v; } }
   else if(b.k===6){ const a=Math.atan2(ny,nx)+Math.sin(this.t*91.7)*1.2, v=Math.max(sp,300*K); s.vx=Math.cos(a)*v; s.vy=Math.sin(a)*v; }
   else if(b.k===7){ s.vx=(nx>=0?1:-1)*Math.max(Math.abs(s.vx),200*K); }
-  if(sp>110*K||b.k===2) this.bossHit(b,sp); else this.ev.push(['bpoke',b.x,b.y]); }
+  if((sp>110*K||b.k===2)&&!(b.cloneOnly&&s===this.s&&!this.clone)) this.bossHit(b,sp); else { this.ev.push(['bpoke',b.x,b.y]); if(b.cloneOnly&&s===this.s&&!this.clone&&this.t-(this.npT||-9)>2){ this.npT=this.t; this.ev.push(['needsplit',b.x,b.y]); } } } /* 5.3.8: cloneOnly — оглушает только раздвоившийся слизень */
  bossHit(b,sp){ if(b.cd>0) return; b.cd=.6; b.react=.6; b.hp--; this.ev.push(['bhit',b.x,b.y,b.hp,b.k]); if(b.hp<=0){ b.dead=true; b.deadT=this.t; this.ev.push(['bdown',b.x,b.y,b.k]); } }
  eatTick(s,dt){ const b=this.boss; s.eat-=dt; if(b){ s.x=b.x; s.y=b.y; } if(s.eat<=0){ s.eat=0; s.vy=-520*K; s.vx=(s.x<LW/2?1:-1)*120*K; s.y-=(b?b.r:0)+R+2; s.hist=[]; s.histT=0; if(b) b.cd=1.2; this.ev.push(['spit',s.x,s.y]); } }
  // полная симуляция для диско-прицела и солвера
@@ -1782,7 +1782,7 @@ const HZFX={ fsbtn:(x,y)=>{ sfx('tap'); haptic('tick'); burst(x,y-4,6,['#4ef0ff'
  snailhide:(x,y)=>{ floats.push({s:'хрусь!',x,y:y-18,t:0,life:.7,size:10,col:'#f0a828'}); }, hog:(x,y)=>{ burst(x,y,6,['#e8dcc8','#8a5a3a'],90,30,.4,200); sfx('bumper'); haptic('tick'); }, hogride:(x,y)=>{ floats.push({s:'скейт!',x,y:y-26,t:0,life:.8,size:10,col:'#e8dcc8'}); sfx('candy',2); },
  note:(x,y,e)=>{ const n=e[3]|0; tone(523*Math.pow(2,HZ_NSTEP[n]/12),.25,'square',.16); floats.push({s:'♪',x,y:y-14,t:0,life:.6,size:11,col:HZ_NCOL[n]}); }, wrongnote:(x,y)=>{ tone(110,.2,'sawtooth',.2); floats.push({s:'фальшь!',x,y:y-24,t:0,life:.8,size:10,col:'#ff8a9a'}); }, melody:(x,y)=>{ sfx('secret'); floats.push({s:'♪ Мелодия! ♪',x,y:y-30,t:0,life:1.2,size:12,col:'#ffd23c'}); }, cpno:(x,y)=>{ tone(880,.06,'square',.12); floats.push({s:'бзынь',x,y:y-18,t:0,life:.6,size:9,col:'#fff'}); }, srtup:(x,y)=>{ floats.push({s:'↑ лёгкий',x,y:y-30,t:0,life:.8,size:9,col:'#7affe0'}); }, sing:(x,y,e)=>{ const n=e[3]|0; tone(523*Math.pow(2,[0,2,4,5,7,9,11,12][n]/12),.18,'triangle',.12); floats.push({s:'♪',x,y:y-16,t:0,life:.6,size:11,col:'#ffd93c'}); }, boom:(x,y)=>{ shake=2; flash=.12; noise(.4,.5,1400); tone(80,.3,'square',.2); burst(x,y,20,['#ff4a2a','#ffb03c','#fff','#ffe066'],220,40,1,0); floats.push({s:'БАБАХ!',x,y:y-26,t:0,life:.8,size:12,col:'#ffb03c'}); }, echono:(x,y)=>{ floats.push({s:'Эхо не пролезло',x,y:y-24,t:0,life:.9,size:9,col:'#b48cff'}); }, r2shield:(x,y)=>{ sfx('bumper'); shake=3; burst(x,y,24,['#7affff','#fff','#8a92a8'],170,30,1,0); floats.push({s:'Перегруз!',x,y:y-34,t:0,life:1,size:11,col:'#ffd23c'}); }, srtdown:(x,y)=>{ floats.push({s:'↓ тяжёлый',x,y:y-30,t:0,life:.8,size:9,col:'#ffd23c'}); }, jboing:(x,y)=>{ sfx('bounce',30); },
  bees:(x,y)=>{ floats.push({s:'Жу-жу!',x,y:y-20,t:0,life:.8,size:10,col:'#ffd23c'}); }, sting:(x,y)=>{ floats.push({s:'Ай, жало!',x,y:y-28,t:0,life:.9,size:11,col:'#ffd23c'}); }, crow:(x,y)=>{ floats.push({s:'Кар!',x,y:y-20,t:0,life:.8,size:11,col:'#fff'}); sfx('bounce',10); }, crowdrop:(x,y)=>{ floats.push({s:'Отбил!',x,y:y-20,t:0,life:.8,size:11,col:'#7affe0'}); sfx('candy',3); } };
-function handleEvents(){ const ch=PC(); for(const e of world.ev){ const [k,x,y]=e; if(k==='jarlocked'){ hzToast(world.boss&&world.boss.k===10?'Банка заперта: сначала оглуши босса — потом сразу в банку':'Банка заперта — сначала победи босса',y-60+oy,'#ffd23c'); sfx&&sfx('tap'); } secOnEvent(k,x,y,e); if(HZFX[k]){ HZFX[k](x,y,e); continue; } if(k==='secbump'){ const rd=(world.L.sec&&world.L.sec.riddle)||''; sfx('bounce',30); floats.push({s:'Портал спит… проснётся только для особенного слизня',x:LW/2,y:Math.max(70,Math.min(LH-80,y-40)),t:0,life:3.2,size:10,col:['#fff','#7affff']}); if(rd) floats.push({s:'«'+rd+'»',x:LW/2,y:Math.max(86,Math.min(LH-64,y-24)),t:0,life:3.2,size:9,col:'#c8f0ff'}); continue; }
+function handleEvents(){ const ch=PC(); for(const e of world.ev){ const [k,x,y]=e; if(k==='needsplit'){ hzToast('Оглушить можно только раздвоившись — тапни в полёте!',y-50+oy,'#ffd23c'); } if(k==='jarlocked'){ hzToast(world.boss&&world.boss.k===10?'Банка заперта: сначала оглуши босса — потом сразу в банку':'Банка заперта — сначала победи босса',y-60+oy,'#ffd23c'); sfx&&sfx('tap'); } secOnEvent(k,x,y,e); if(HZFX[k]){ HZFX[k](x,y,e); continue; } if(k==='secbump'){ const rd=(world.L.sec&&world.L.sec.riddle)||''; sfx('bounce',30); floats.push({s:'Портал спит… проснётся только для особенного слизня',x:LW/2,y:Math.max(70,Math.min(LH-80,y-40)),t:0,life:3.2,size:10,col:['#fff','#7affff']}); if(rd) floats.push({s:'«'+rd+'»',x:LW/2,y:Math.max(86,Math.min(LH-64,y-24)),t:0,life:3.2,size:9,col:'#c8f0ff'}); continue; }
  if(k==='bhit'){ const B=BOSS[e[4]]; sfx('bumper'); sfx('ouch'); haptic('heavy'); shake=Math.max(shake,4); flash=.06; burst(x,y,24,[B.col,'#fff','#ffd23c'],170,40,.7,0); floats.push({s:B.say[(3-e[3]+2)%3]||'Ай!',x:Math.max(50,Math.min(LW-50,x)),y:y-40,t:0,life:1.1,size:13,col:['#fff',B.col],pop:1}); }
  if(k==='bdown'){ const B=BOSS[e[3]]; sfx('win'); haptic('success'); shake=7; flash=.15; world.bossDown=true; burst(x,y,70,['#ffd23c','#fff','#ff4a8a','#4ef0ff',B.col],240,80,1.4,150); floats.push({s:B.name+' ПОВЕРЖЕН!',x:LW/2,y:Math.max(80,y-60),t:0,life:2.4,size:15,col:['#fff','#ffd23c'],pop:1}); floats.push({s:'+1500',x,y:y-20,t:0,life:1.6,size:14,col:'#fff6b0'}); qEv('boss'); }
  if(k==='bpoke'){ }
