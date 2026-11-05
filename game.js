@@ -1,5 +1,5 @@
 'use strict';
-window.__ASSET_V='5.3.11';
+window.__ASSET_V='5.3.12';
 /* FB14: долгое нажатие — без выделения текста, лупы и контекстного меню (Telegram WebView / iOS / Android); поля ввода не трогаем */
 (()=>{ const editable=t=>!!(t&&t.closest&&t.closest('input,textarea,select,[contenteditable]')); const stop=e=>{ if(!editable(e.target)) e.preventDefault(); };
  ['contextmenu','selectstart','dragstart','gesturestart'].forEach(k=>document.addEventListener(k,stop,{passive:false,capture:true}));
@@ -1209,9 +1209,12 @@ class World{
    /* FB12: лента/платформа не затаскивает слизня в шипы — упирается у края */ if((s.x!==ox0||s.y!==oy0)&&!this.ch.spiky&&this.touchSpike(s.x,s.y)&&!this.touchSpike(ox0,oy0)){ s.x=ox0; if(!s.ground||!s.ground.mover) s.y=oy0; }
    if(s.x<R) s.x=R; if(s.x>LW-R) s.x=LW-R;
    if(!this.support(s)) { s.st='fly'; s.vx=0; s.vy=0; s.fly=0; s.used=true; s.hist=[]; }
+   /* 5.3.12: слизня везёт платформа/лента — конфеты по пути тоже собираются (раньше проверка была только в полёте, и на лифте он проезжал сквозь конфету). Проверяем отрезок от старой позиции к новой. */
+   const px0=s.pkx!==undefined?s.pkx:ox0, py0=s.pky!==undefined?s.pky:oy0; s.pkx=s.x; s.pky=s.y; if(s.x!==px0||s.y!==py0){ const PR=MAG.PICK*HK*(this.L&&this.L.need?HZ_PICK:1), ddx=s.x-px0, ddy=s.y-py0, L2=ddx*ddx+ddy*ddy; for(const c of this.candies){ if(c.got) continue; let u=L2>0?((c.x-px0)*ddx+(c.y-py0)*ddy)/L2:1; u=Math.max(0,Math.min(1,u)); if(Math.hypot(px0+ddx*u-c.x,py0+ddy*u-c.y)<PR) this.pickCandy(c,c.cap); } }
    const g1=this.L.goal; if(main&&s.st==='idle'&&this.goalLock()&&this.jarNear(s,g1)&&this.t-(this.lockTT||-9)>2.2){ this.lockTT=this.t; this.ev.push(['jarlocked',g1[0],g1[1]]); } /* 5.3.7: банка заперта — подсказка */ if(main&&!this.goalLock()&&s.st==='idle'&&this.jarNear(s,g1)){ s.st='win'; s.at=0; this.result='win'; this.ev.push(['win']); return; } }
-  if((s.st==='splat'||s.st==='recover')&&s.ground&&s.ground.mover){ s.x+=s.ground.dx; s.y+=s.ground.dy; }
+  if((s.st==='splat'||s.st==='recover')&&s.ground&&s.ground.mover){ s.x+=s.ground.dx; s.y+=s.ground.dy; const PR=MAG.PICK*HK*(this.L&&this.L.need?HZ_PICK:1); for(const c of this.candies) if(!c.got&&Math.hypot(s.x-c.x,s.y-c.y)<PR) this.pickCandy(c,c.cap); }
   if(s.st==='poof'){ s.at-=dt; if(s.at<=0){ /* FB12: после шипов — всегда на старт уровня + 0.6 с неуязвимости */ s.x=this.L.start[0]; s.y=this.L.start[1]; s.lx=s.x; s.ly=s.y; s.inv=.6; s.vx=s.vy=0; s.st='idle'; s.ground=null; s.wall=false; s.hover=false; this.ev.push(['respawn']); } return; }
+  if(s.st!=='idle'){ s.pkx=undefined; s.pky=undefined; } /* 5.3.12: следующий «idle»-отрезок начинается с места посадки */
   if(s.st!=='fly') return;
   if(s.eat>0){ this.eatTick(s,dt); return; }
   s.fly+=dt; s.pcd-=dt; s.padT+=dt; if(s.padT>2.6) s.padN=0;
