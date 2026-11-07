@@ -3130,7 +3130,7 @@ function rescale(){ const ch=resize(); if(ch&&spritesReady&&scene==='menu') init
 // ---------- FB1: возврат из фона (iOS/Telegram выгружает память канвасов, вьюпорт меняется, пока свёрнуто) ----------
 let hiddenAt=0, resumes=0; const probe=mk(2,2); probe[1].fillStyle='#f00'; probe[1].fillRect(0,0,2,2);
 function gfxReset(){ bgCache={}; txtCache.clear(); tMeasure.clear(); for(const C of [outlCache,silCache,skinCache,pixCache,grafCache,fuseCache,ancCache]) for(const k in C) delete C[k]; nightC=null; nightX=null;
- for(const k in SPR) if(!(SPR[k] instanceof HTMLImageElement)) delete SPR[k]; buildSecretSprite(); if(typeof candyCache==='object') for(const k in candyCache) delete candyCache[k];
+ for(const k in SPR) if(!(SPR[k] instanceof HTMLImageElement)) delete SPR[k]; buildSecretSprite(); buildSec7Sprites(); if(typeof candyCache==='object') for(const k in candyCache) delete candyCache[k];
  if(world&&lvlCanvas) lvlCanvas=buildLevelCanvas(LV[curLevel],themeOf(curLevel)); probe[1].fillStyle='#f00'; probe[1].fillRect(0,0,2,2); }
 function onHide(){ if(!hiddenAt) hiddenAt=performance.now(); drag=null; pressed=null; swipe=null; if(world) world.slow=false; if(scene==='play'&&world&&!world.result&&!overlay) openPause(); }
 function onResume(){ const away=hiddenAt?performance.now()-hiddenAt:0; hiddenAt=0; resumes++; drag=null; pressed=null; swipe=null; try{ bdDrag=null; if(mfl) mfl.drag=null; }catch(e){} tgRebind(); for(const ms of [400,1500]) setTimeout(()=>tgRebind(),ms);
