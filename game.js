@@ -1202,7 +1202,10 @@ class World{
  jarNear(s,g){ if(Math.abs(s.x-g[0])<(this.L&&this.L.need?HZ_GOALX:14)&&s.y>g[1]-36&&s.y<g[1]+2) return true; if(!(this.L&&this.L.need&&this.L.bossLock)||!s.ground||s.y<g[1]-36||s.y>g[1]+2) return false; const o=s.ground; return o.y!==undefined&&Math.abs(o.y-g[1])<=3&&g[0]>=o.x&&g[0]<=o.x+o.w&&Math.abs(s.x-g[0])<46; } /* 5.3.7: уровни с боссом-замком — стоишь на площадке банки (до 46 px) = в банке */
  goalLock(){ return !!(this.L.bossLock&&this.boss&&!this.boss.dead); }
  /* FB12: прицел-диско шагает ровно как игровой цикл (кадр 1/60, те же адаптивные подшаги) — путь = физика */
- previewPath(dx,dy,frames=150){ const w=this.snapshot(); const pts=[], ev=[]; if(!w.launch(dx,dy)) return {pts,ev,w}; for(let f=0;f<frames&&w.s.st==='fly'&&!w.result;f++){ const sd=(1/60)*(w.mod&&w.mod.ts||1), n=Math.min(24,Math.max(4,Math.ceil(Math.hypot(w.s.vx,w.s.vy)*sd/5))); for(let i=0;i<n&&w.s.st==='fly'&&!w.result;i++){ w.step(sd/n); for(const e of w.ev) ev.push(e[0]); w.ev.length=0; } pts.push([w.s.x,w.s.y]); } return {pts,ev,w}; }
+ previewPath(dx,dy,frames=150){ const w=this.snapshot(); const pts=[], ev=[]; if(!w.launch(dx,dy)) return {pts,ev,w};
+  const air=()=>w.s.st==='fly'||(w.s.st==='idle'&&w.s.bub); /* прицел не обрывается на посадке в пузырь: дальше едем с ним и после лопанья */
+  const cap=(w.crs&&w.crs.some(c=>c.type==='bub'))?Math.max(frames,360):frames;
+  for(let f=0;f<cap&&air()&&!w.result;f++){ const sd=(1/60)*(w.mod&&w.mod.ts||1), n=Math.min(24,Math.max(4,Math.ceil(Math.hypot(w.s.vx,w.s.vy)*sd/5))); for(let i=0;i<n&&air()&&!w.result;i++){ w.step(sd/n); for(const e of w.ev) ev.push(e[0]); w.ev.length=0; } pts.push([w.s.x,w.s.y]); } return {pts,ev,w}; }
  softZone(s,wat){ if(s.fly<.15) return null; if(!this.has('sponge')){ const w=wat||(s.flo&&s.x>=s.flo[0]&&s.x<=s.flo[0]+s.flo[2]&&s.y<s.flo[1]&&s.y>s.flo[1]-2.4*R?s.flo:null); if(wat) s.flo=wat; if(w&&!(s.vy<-330*K&&s.y<w[1])) return {k:'water',ty:w[1]+4}; if(!w) s.flo=null; }
   for(const f of this.fans){ if(s.x>=f[0]&&s.x<=f[0]+f[2]&&s.y>f[1]-2.2*R&&s.y<f[1]+2.6*R&&Math.abs(s.vy)<330*K&&s.fly>.3) return {k:'fan',ty:f[1]+2}; } return null; }
  touchSpike(x,y){ const R=RB*(this.mod&&this.mod.hit||1); for(const o of this.allSolids()) if(o.type==='s'&&circRect(x,y,R-1,o.x,o.y,o.w,o.h)) return true; return false; }
@@ -1943,6 +1946,7 @@ function frameOf(a,t){ const A=ANIM[a]; const f=Math.floor(t*1000/A.ms); return 
 function mixHex(a,b,k){ const A=hex(a),B=hex(b); return 'rgb('+A.map((v,i)=>Math.round(v+(B[i]-v)*k)).join(',')+')'; }
 let aimPts=null;
 function aimDark(){ if(isNight()) return true; const th=THEMES[themeOf(curLevel)]; if(!th||!th.sky) return false; const L=th.sky.slice(0,2).map(c=>{ const q=hex(c); return lum(q[0],q[1],q[2]); }); return (L[0]+L[1])/2<70; }
+function bubAimKey(dx,dy){ let k=(dx|0)+','+(dy|0); const A=world&&world.crs; if(A) for(const c of A) if(c.type==='bub') for(const b of (c.st&&c.st.b||[])) if(!b.dead) k+=','+(b.x>>3)+':'+(b.y>>3); return k; }
 function drawPlay(){ const s=world.s, ti=themeOf(curLevel), th=THEMES[ti], ch=PC();
  drawBG(ti,s.x-LW/2,now);
  const shk=RM()?0:Math.min(7,shake), sx=(Math.random()-.5)*shk*2|0, sy=(Math.random()-.5)*shk*2|0;
@@ -1969,7 +1973,7 @@ function drawPlay(){ const s=world.s, ti=themeOf(curLevel), th=THEMES[ti], ch=PC
  drawDark(world); // О6 тьма
  // траектория
  if(drag&&s.st==='idle'){ let dx=drag.cx-drag.x0, dy=drag.cy-drag.y0; const l=Math.hypot(dx,dy); if(l>8){
-   const pts=[]; if(world.has('preview')){ const key=(dx|0)+','+(dy|0); if(!drawPlay.pc||drawPlay.pc.k!==key){ const pp=world.previewPath(dx,dy).pts; drawPlay.pc={k:key,pp}; } pts.push(...drawPlay.pc.pp.filter((_,i)=>i%2===0)); }
+   const pts=[]; if(world.has('preview')){ const key=bubAimKey(dx,dy); if(!drawPlay.pc||drawPlay.pc.k!==key){ const pp=world.previewPath(dx,dy).pts; drawPlay.pc={k:key,pp}; } pts.push(...drawPlay.pc.pp.filter((_,i)=>i%2===0)); }
    else { const k=Math.min(l,MAXDRAG*(world.onRide&&world.onRide()?BUBPOW:1))/l, v=560*K*ch.power*(world.mod&&world.mod.pw||1)/MAXDRAG; const iv=world.mod&&world.mod.inv?-1:1; let vx=-dx*k*v*iv, vy=-dy*k*v*iv, px=s.x, py=s.y; const gg=G0*ch.grav*(world.has('glide')?.5:1)*(world.mod&&world.mod.g||1);
     for(let i=0;i<60;i++){ vy+=gg/60; px+=vx/60; py+=vy/60; if(px<0||px>LW||py>LH||py<0) break; let hit=false; for(const o of world.solids) if(o.alive&&px>o.x&&px<o.x+o.w&&py>o.y&&py<o.y+o.h) hit=true; if(hit)break; if(i%3===1) pts.push([px,py]); } }
    const dk=aimDark(); const cL=world.mod&&world.mod.id==='moon'?'#9ad8ff':dk?mixHex(ch.col,'#ffffff',.45):ch.col; if(chaosRun&&chaosRun.blink>0&&(now*16|0)%2) pts.length=0; aimPts=dk?{pts,cL}:null; if(!dk) pts.forEach(([px,py],i)=>{ const a=1-i/pts.length, z=i<8?3:2; if(dk){ ctx.globalAlpha=Math.max(.12,a*.26); ctx.fillStyle='#fff2c8'; ctx.fillRect((px|0)-2,(py|0)-2,z+4,z+4); } ctx.globalAlpha=Math.max(dk?.6:.35,a); ctx.fillStyle='#1a0c22'; ctx.fillRect((px|0)-1,(py|0)-1,z+2,z+2); ctx.fillStyle=i%2?cL:'#fff'; ctx.fillRect(px|0,py|0,z,z); ctx.globalAlpha=1; }); } }
